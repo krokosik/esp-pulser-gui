@@ -4,8 +4,27 @@ import HeartbeatPlot from "./components/HeartbeatPlot";
 import Logs from "./components/Logs";
 import UpdateStatus from "./components/UpdateStatus";
 import NetworkingStatus from "./components/NetworkingStatus";
+import { useEffect } from "react";
+import { getVersion } from "@tauri-apps/api/app";
+import { attachConsole, info } from "@tauri-apps/plugin-log";
+import { useAppStore } from "./store";
 
 const App: React.FC = () => {
+  const { setAppVersion } = useAppStore();
+
+  useEffect(() => {
+    const detachPromise = attachConsole();
+
+    getVersion().then((appVersion) => {
+      info(`App version: ${appVersion}`);
+      setAppVersion(appVersion);
+    });
+
+    return () => {
+      detachPromise.then((detach) => detach());
+    };
+  }, []);
+
   return (
     <div className="app-container" style={{ height: "100vh", padding: "1rem" }}>
       <Navbar>

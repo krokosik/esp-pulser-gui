@@ -45,7 +45,7 @@ const HeartbeatPlot: React.FC = () => {
         fill: false,
         borderColor: "#137CBD",
         backgroundColor: "rgba(19, 124, 189, 0.2)",
-        tension: 0.3, // Smooth curve
+        tension: 0.1, // Smooth curve
       },
     ],
   };
@@ -65,13 +65,14 @@ const HeartbeatPlot: React.FC = () => {
         intersect: false,
       },
     },
+    animations: false,
   };
 
   return (
     <div>
       <h2>Heartbeat Signal</h2>
       <div style={{ height: "300px" }}>
-        <Line ref={chartRef} data={chartData} options={options} />
+        <Line ref={chartRef} data={chartData} options={options as any} />
       </div>
     </div>
   );

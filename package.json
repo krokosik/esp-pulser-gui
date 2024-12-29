@@ -1,5 +1,5 @@
 {
-  "name": "esp_pulser_gui",
+  "name": "esp-pulser-gui",
   "private": true,
   "version": "0.1.0",
   "type": "module",

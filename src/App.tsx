@@ -1,4 +1,12 @@
-import { Navbar, Alignment, Button, Card, Elevation } from "@blueprintjs/core";
+import {
+  Navbar,
+  Alignment,
+  Button,
+  Card,
+  Elevation,
+  FormGroup,
+  InputGroup,
+} from "@blueprintjs/core";
 import DeviceInfo from "./components/DeviceInfo";
 import HeartbeatPlot from "./components/HeartbeatPlot";
 import Logs from "./components/Logs";
@@ -10,7 +18,7 @@ import { attachConsole, info } from "@tauri-apps/plugin-log";
 import { useAppStore } from "./store";
 
 const App: React.FC = () => {
-  const { setAppVersion } = useAppStore();
+  const { setAppVersion, connected } = useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
@@ -31,8 +39,17 @@ const App: React.FC = () => {
         <Navbar.Group align={Alignment.LEFT}>
           <Navbar.Heading>ESP32 Dashboard</Navbar.Heading>
           <Navbar.Divider />
+          <FormGroup label="IP Address" inline style={{ margin: 0 }}>
+            <InputGroup placeholder="Enter IP Address" disabled={connected} />
+          </FormGroup>
+          <Navbar.Divider />
           <Button className="bp5-minimal" icon="refresh" text="Reconnect" />
-          <Button className="bp5-minimal" icon="reset" text="Restart board" />
+          <Button
+            className="bp5-minimal"
+            icon="reset"
+            text="Restart board"
+            disabled={!connected}
+          />
         </Navbar.Group>
       </Navbar>
 
@@ -50,12 +67,16 @@ const App: React.FC = () => {
         <Card elevation={Elevation.TWO}>
           <UpdateStatus />
         </Card>
-        <Card elevation={Elevation.TWO}>
-          <NetworkingStatus />
-        </Card>
-        <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
-          <HeartbeatPlot />
-        </Card>
+        {connected && (
+          <Card elevation={Elevation.TWO}>
+            <NetworkingStatus />
+          </Card>
+        )}
+        {connected && (
+          <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
+            <HeartbeatPlot />
+          </Card>
+        )}
         <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
           <Logs />
         </Card>

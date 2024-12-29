@@ -1,5 +1,5 @@
 [package]
-name = "esp_pulser_gui"
+name = "esp-pulser-gui"
 version = "0.1.0"
 description = "A Tauri App"
 authors = ["you"]

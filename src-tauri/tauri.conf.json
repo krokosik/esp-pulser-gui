@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "esp_pulser_gui",
+  "productName": "esp-pulser-gui",
   "version": "0.1.0",
-  "identifier": "com.esp_pulser_gui.app",
+  "identifier": "com.esp-pulser-gui.app",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "esp_pulser_gui",
+        "title": "esp-pulser-gui",
         "width": 800,
         "height": 600
       }

@@ -16,9 +16,10 @@ import { useEffect } from "react";
 import { getVersion } from "@tauri-apps/api/app";
 import { attachConsole, info } from "@tauri-apps/plugin-log";
 import { useAppStore } from "./store";
+import { check } from "@tauri-apps/plugin-updater";
 
 const App: React.FC = () => {
-  const { setAppVersion, connected } = useAppStore();
+  const { setAppVersion, connected, setGuiUpdateAvailable } = useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
@@ -26,6 +27,16 @@ const App: React.FC = () => {
     getVersion().then((appVersion) => {
       info(`App version: ${appVersion}`);
       setAppVersion(appVersion);
+    });
+
+    check().then((update) => {
+      if (update) {
+        info(`GUI update available: ${update.version}`);
+        setGuiUpdateAvailable(true);
+      } else {
+        info("No GUI updates available");
+        setGuiUpdateAvailable(false);
+      }
     });
 
     return () => {

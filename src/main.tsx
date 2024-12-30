@@ -4,6 +4,7 @@ import App from "./App";
 import "normalize.css";
 import "@blueprintjs/core/lib/css/blueprint.css";
 import "@blueprintjs/icons/lib/css/blueprint-icons.css";
+import "@blueprintjs/select/lib/css/blueprint-select.css";
 import { OverlaysProvider } from "@blueprintjs/core";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

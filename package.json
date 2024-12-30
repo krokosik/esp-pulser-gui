@@ -12,7 +12,10 @@
   "dependencies": {
     "@blueprintjs/core": "^5.16.2",
     "@blueprintjs/icons": "^5.16.0",
+    "@blueprintjs/select": "^5.3.7",
+    "@melloware/react-logviewer": "^6.1.1",
     "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-fs": "^2.2.0",
     "@tauri-apps/plugin-log": "^2.2.0",
     "@tauri-apps/plugin-opener": "^2",
     "@tauri-apps/plugin-process": "^2.2.0",

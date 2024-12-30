@@ -37,7 +37,9 @@
     "updater": {
       "active": true,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFMkFFNTk2RDNCODJDQjkKUldTNUxMalRsdVVxL3VkcUhPaVkxZytGRDhwNUZ6WTFrUHlYcEh0ZytnVWt1SHY3ejFJWUVCOUMK",
-      "endpoints": []
+      "endpoints": [
+        "https://github.com/krokosik/esp-pulser-gui/releases/latest/download/latest.json"
+      ]
     }
   }
 }

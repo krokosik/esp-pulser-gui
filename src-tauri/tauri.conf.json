@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "esp-pulser-gui",
+        "title": "ESP Pulser GUI",
         "width": 800,
         "height": 600
       }

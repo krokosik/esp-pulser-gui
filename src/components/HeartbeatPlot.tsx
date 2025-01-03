@@ -9,6 +9,7 @@ import {
   Tooltip,
   Title,
 } from "chart.js";
+import { listen } from "@tauri-apps/api/event";
 
 // Register chart components
 ChartJS.register(
@@ -26,14 +27,15 @@ const HeartbeatPlot: React.FC = () => {
   const chartRef = useRef<any>(null);
 
   useEffect(() => {
-    // Simulated heartbeat data every 500ms
-    const interval = setInterval(() => {
-      const randomBpm = Math.floor(Math.random() * 30) + 60; // Simulate BPM between 60-90
-      setData((prev) => [...prev.slice(-49), randomBpm]); // Keep the last 50 data points
-      setLabels((prev) => [...prev.slice(-49), prev.length + 1]); // Increment labels
-    }, 500);
+    const unlistenPromise = listen("heartbeat_datum", (event) => {
+      const datum = event.payload as number;
+      setData((prev) => [...prev.slice(-499), datum]); // Keep the last 50 data points
+      setLabels((prev) => [...prev.slice(-499), prev.length + 1]); // Increment labels
+    });
 
-    return () => clearInterval(interval);
+    return () => {
+      unlistenPromise.then((fn) => fn());
+    };
   }, []);
 
   const chartData = {

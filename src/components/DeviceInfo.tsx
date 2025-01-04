@@ -2,7 +2,7 @@ import { Icon, Button } from "@blueprintjs/core";
 import { useAppStore } from "../store";
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { info } from "@tauri-apps/plugin-log";
+import { error, info } from "@tauri-apps/plugin-log";
 
 const DeviceInfo: React.FC = () => {
   const { appVersion, connected, setConnected } = useAppStore();
@@ -12,11 +12,11 @@ const DeviceInfo: React.FC = () => {
       return;
     }
 
-    const interval = setInterval(async () => {
-      const res = await invoke("connect_sensor");
-      info(`Connected to sensor: ${res}`);
-      setConnected(true);
-    }, 2000);
+    const interval = setInterval(() => {
+      invoke("connect_sensor")
+        .then(() => setConnected(true))
+        .catch(error);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [connected, setConnected]);

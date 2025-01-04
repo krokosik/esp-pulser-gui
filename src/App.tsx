@@ -1,34 +1,33 @@
 import {
-  Navbar,
   Alignment,
   Button,
   Card,
   Elevation,
   FormGroup,
   InputGroup,
+  Navbar,
 } from "@blueprintjs/core";
+import { attachConsole, info } from "@tauri-apps/plugin-log";
+import { check } from "@tauri-apps/plugin-updater";
+import { useEffect } from "react";
 import DeviceInfo from "./components/DeviceInfo";
 import HeartbeatPlot from "./components/HeartbeatPlot";
 import Logs from "./components/Logs";
-import UpdateStatus from "./components/UpdateStatus";
 import NetworkingStatus from "./components/NetworkingStatus";
-import { useEffect } from "react";
-import { getVersion } from "@tauri-apps/api/app";
-import { attachConsole, info } from "@tauri-apps/plugin-log";
+import UpdateStatus from "./components/UpdateStatus";
 import { useAppStore } from "./store";
-import { check } from "@tauri-apps/plugin-updater";
 
 const App: React.FC = () => {
-  const { setAppVersion, connected, setGuiUpdateAvailable, setConnected } =
-    useAppStore();
+  const {
+    sensorIpAddress,
+    setSensorIpAddress,
+    connected,
+    setGuiUpdateAvailable,
+    setConnected,
+  } = useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
-
-    getVersion().then((appVersion) => {
-      info(`App version: ${appVersion}`);
-      setAppVersion(appVersion);
-    });
 
     check().then((update) => {
       if (update) {
@@ -52,7 +51,12 @@ const App: React.FC = () => {
           <Navbar.Heading>ESP32 Dashboard</Navbar.Heading>
           <Navbar.Divider />
           <FormGroup label="IP Address" inline style={{ margin: 0 }}>
-            <InputGroup placeholder="Enter IP Address" disabled={connected} />
+            <InputGroup
+              placeholder="Enter IP Address"
+              disabled={connected}
+              value={sensorIpAddress}
+              onValueChange={setSensorIpAddress}
+            />
           </FormGroup>
           <Navbar.Divider />
           <Button

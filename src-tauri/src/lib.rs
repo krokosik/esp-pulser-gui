@@ -1,30 +1,50 @@
 use std::{
     io::Write,
-    net::{Ipv4Addr, SocketAddrV4, TcpStream, UdpSocket},
+    net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, UdpSocket},
+    str::FromStr,
     sync::Mutex,
-    thread::sleep,
     time::Duration,
 };
 
 use anyhow::{anyhow, Context};
-use libarp::{client::ArpClient, interfaces::MacAddr};
 use log::info;
 use tauri::{Emitter, Manager, Result};
 use tauri_plugin_log::{fern::colors::ColoredLevelConfig, Target, TargetKind};
 
-const SENSOR_MAC_ADDRESS: [u8; 6] = [0x30, 0xae, 0xa4, 0x0c, 0x1b, 0x4c];
 const SENSOR_TCP_PORT: u16 = 12345;
 
 #[derive(Default)]
 struct AppState {
     sensor_tcp: Option<TcpStream>,
     udp_port: Option<u16>,
+    sensor_ip: Option<Ipv4Addr>,
+}
+
+#[tauri::command]
+fn get_sensor_ip(state: tauri::State<'_, Mutex<AppState>>) -> String {
+    let state = state.lock().unwrap();
+    state
+        .sensor_ip
+        .and_then(|ip| Some(ip.to_string()))
+        .unwrap_or(String::from(""))
+}
+
+#[tauri::command]
+fn set_sensor_ip(ip: String, state: tauri::State<'_, Mutex<AppState>>) -> Result<()> {
+    let mut state = state.lock().unwrap();
+    state.sensor_ip = Some(Ipv4Addr::from_str(&ip).map_err(|e| anyhow!(e))?);
+    info!("Sensor IP set to {}", &ip);
+    Ok(())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![connect_sensor])
+        .invoke_handler(tauri::generate_handler![
+            connect_sensor,
+            get_sensor_ip,
+            set_sensor_ip
+        ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
@@ -62,30 +82,37 @@ pub fn run() {
 
 #[tauri::command]
 fn connect_sensor(state: tauri::State<'_, Mutex<AppState>>) -> Result<()> {
-    let mut app_state = state.lock().unwrap();
-    let mut client = ArpClient::new()?;
+    let mut state = state.lock().unwrap();
 
-    if app_state.sensor_tcp.is_none() {
-        let udp_port = app_state
-            .udp_port
-            .context("Listener UDP port is not yet ready")?;
-
-        let sensor_ip = client.mac_to_ip(
-            MacAddr::new(
-                SENSOR_MAC_ADDRESS[0],
-                SENSOR_MAC_ADDRESS[1],
-                SENSOR_MAC_ADDRESS[2],
-                SENSOR_MAC_ADDRESS[3],
-                SENSOR_MAC_ADDRESS[4],
-                SENSOR_MAC_ADDRESS[5],
-            ),
-            Some(Duration::from_secs(2)),
-        )?;
-        let mut sensor_tcp =
-            TcpStream::connect(&SocketAddrV4::new(sensor_ip, SENSOR_TCP_PORT))?;
-        sensor_tcp.write(&udp_port.to_be_bytes())?;
-        app_state.sensor_tcp = Some(sensor_tcp);
+    if state.sensor_tcp.is_some() {
+        info!("TCP Stream already exists");
+        return Ok(());
     }
+
+    info!("Attempting sensor connection");
+    let udp_port = state
+        .udp_port
+        .context("Listener UDP port is not yet ready")?;
+
+    let sensor_ip = state.sensor_ip.context("IP address not set")?;
+
+    info!(
+        "Attempting TCP connection to {}:{}",
+        sensor_ip, SENSOR_TCP_PORT
+    );
+
+    let mut sensor_tcp = TcpStream::connect_timeout(
+        &SocketAddr::new(IpAddr::V4(sensor_ip), SENSOR_TCP_PORT),
+        Duration::from_secs(5),
+    )?;
+
+    info!(
+        "Connection established, sending UDP heartbeat listener port: {}",
+        udp_port
+    );
+
+    sensor_tcp.write(&udp_port.to_be_bytes())?;
+    state.sensor_tcp = Some(sensor_tcp);
 
     Ok(())
 }

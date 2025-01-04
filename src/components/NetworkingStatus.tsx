@@ -1,11 +1,12 @@
 import { FormGroup, Icon, NumericInput } from "@blueprintjs/core";
 import React, { useState } from "react";
+import { useAppStore } from "../store";
 
 const NetworkingStatus: React.FC = () => {
-  const [udpPort, setUdpPort] = useState(34254);
+  const { tdUdpPort, setTdUdpPort } = useAppStore();
 
   const handleUdpChange = (value: string) => {
-    setUdpPort(Math.min(Math.max(parseInt(value), 1024), 65535) || 0);
+    setTdUdpPort(Math.min(Math.max(parseInt(value), 1024), 65535) || 0);
   };
 
   return (
@@ -13,11 +14,11 @@ const NetworkingStatus: React.FC = () => {
       <h2>
         <Icon icon="globe-network" /> Networking & Status
       </h2>
-      <FormGroup label="UDP Port" inline>
+      <FormGroup label="TD UDP Port" inline>
         <NumericInput
           style={{ width: "80px" }}
-          placeholder="Enter UDP Port"
-          value={udpPort}
+          placeholder="Enter TD UDP Port"
+          value={tdUdpPort}
           onChange={(e) => handleUdpChange(e.target.value)}
           buttonPosition="none"
         />

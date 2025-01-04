@@ -2,7 +2,7 @@ import { Icon, Button } from "@blueprintjs/core";
 import { useAppStore } from "../store";
 import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { error, info } from "@tauri-apps/plugin-log";
+import { error } from "@tauri-apps/plugin-log";
 
 const DeviceInfo: React.FC = () => {
   const { appVersion, connected, setConnected } = useAppStore();

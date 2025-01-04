@@ -16,8 +16,9 @@ const SENSOR_TCP_PORT: u16 = 12345;
 #[derive(Default)]
 struct AppState {
     sensor_tcp: Option<TcpStream>,
-    udp_port: Option<u16>,
+    listen_udp_port: Option<u16>,
     sensor_ip: Option<Ipv4Addr>,
+    td_udp_port: u16,
 }
 
 #[tauri::command]
@@ -43,7 +44,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             connect_sensor,
             get_sensor_ip,
-            set_sensor_ip
+            set_sensor_ip,
+            get_td_udp_port,
+            set_td_udp_port,
         ])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
@@ -71,7 +74,12 @@ pub fn run() {
             app.manage(Mutex::new(AppState::default()));
             let app_handle = app.app_handle().clone();
             tauri::async_runtime::spawn(async move {
-                sensor_thread(&app_handle).expect("error while running sensor thread");
+                loop {
+                    match sensor_thread(&app_handle) {
+                        Ok(_) => {}
+                        Err(e) => log::error!("Error in UDP listener thread: {:?}", e),
+                    }
+                }
             });
 
             Ok(())
@@ -91,7 +99,7 @@ fn connect_sensor(state: tauri::State<'_, Mutex<AppState>>) -> Result<()> {
 
     info!("Attempting sensor connection");
     let udp_port = state
-        .udp_port
+        .listen_udp_port
         .context("Listener UDP port is not yet ready")?;
 
     let sensor_ip = state.sensor_ip.context("IP address not set")?;
@@ -120,6 +128,13 @@ fn connect_sensor(state: tauri::State<'_, Mutex<AppState>>) -> Result<()> {
 fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0))?;
     info!("listening on {:?}", socket.local_addr()?);
+
+    {
+        let state = app_handle.state::<Mutex<AppState>>();
+        let mut state = state.lock().unwrap();
+        state.listen_udp_port = Some(socket.local_addr()?.port());
+    }
+
     let mut buf = [0u8; 100];
     loop {
         let (n, _src) = socket.recv_from(&mut buf)?;
@@ -127,4 +142,18 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
             app_handle.emit("heartbeat_datum", u16::from_be_bytes([buf[0], buf[1]]))?;
         }
     }
+}
+
+#[tauri::command]
+fn get_td_udp_port(state: tauri::State<'_, Mutex<AppState>>) -> u16 {
+    let state = state.lock().unwrap();
+    state.td_udp_port
+}
+
+#[tauri::command]
+fn set_td_udp_port(port: u16, state: tauri::State<'_, Mutex<AppState>>) -> Result<()> {
+    let mut state = state.lock().unwrap();
+    state.td_udp_port = port;
+    info!("TouchDesigner UDP port set to {}", &port);
+    Ok(())
 }

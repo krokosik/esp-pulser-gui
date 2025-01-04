@@ -5,6 +5,7 @@ import { create } from "zustand";
 
 const appVersion = await getVersion();
 const sensorIpAddress = await invoke<string>("get_sensor_ip");
+const tdUdpPort = await invoke<number>("get_td_udp_port");
 
 interface AppState {
   connected: boolean;
@@ -12,10 +13,12 @@ interface AppState {
   firmwareUpdateAvailable: boolean;
   appVersion: string;
   sensorIpAddress: string;
+  tdUdpPort: number;
   setConnected: (connected: boolean) => void;
   setGuiUpdateAvailable: (available: boolean) => void;
   setFirmwareUpdateAvailable: (available: boolean) => void;
   setSensorIpAddress: (sensorIpAddress: string) => void;
+  setTdUdpPort: (tdUdpPort: number) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -24,6 +27,7 @@ export const useAppStore = create<AppState>((set) => ({
   guiUpdateAvailable: false,
   firmwareUpdateAvailable: false,
   sensorIpAddress,
+  tdUdpPort,
   setConnected: (connected) => set({ connected }),
   setGuiUpdateAvailable: (guiUpdateAvailable) => set({ guiUpdateAvailable }),
   setFirmwareUpdateAvailable: (firmwareUpdateAvailable) =>
@@ -41,5 +45,9 @@ export const useAppStore = create<AppState>((set) => ({
     } catch (e: any) {
       await error(e);
     }
+  },
+  setTdUdpPort: async (tdUdpPort) => {
+    await invoke("set_td_udp_port", { port: tdUdpPort });
+    set({ tdUdpPort });
   },
 }));

@@ -13,7 +13,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   appVersion: "v0.0.0",
-  connected: true,
+  connected: false,
   guiUpdateAvailable: false,
   firmwareUpdateAvailable: false,
   setAppVersion: (appVersion) => set({ appVersion }),

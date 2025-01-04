@@ -27,5 +27,6 @@ tauri-plugin-log = { version = "2", features = ["colored"] }
 tauri-plugin-process = "2"
 tauri-plugin-fs = "2"
 anyhow = "1.0.95"
+arp-toolkit = { version = "0.3.2", features = ["sync"] }
 [target."cfg(not(any(target_os = \"android\", target_os = \"ios\")))".dependencies]
 tauri-plugin-updater = "2"

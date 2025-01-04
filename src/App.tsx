@@ -19,7 +19,8 @@ import { useAppStore } from "./store";
 import { check } from "@tauri-apps/plugin-updater";
 
 const App: React.FC = () => {
-  const { setAppVersion, connected, setGuiUpdateAvailable } = useAppStore();
+  const { setAppVersion, connected, setGuiUpdateAvailable, setConnected } =
+    useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
@@ -54,7 +55,12 @@ const App: React.FC = () => {
             <InputGroup placeholder="Enter IP Address" disabled={connected} />
           </FormGroup>
           <Navbar.Divider />
-          <Button className="bp5-minimal" icon="refresh" text="Reconnect" />
+          <Button
+            className="bp5-minimal"
+            icon="refresh"
+            text="Reconnect"
+            onClick={() => setConnected(false)}
+          />
           <Button
             className="bp5-minimal"
             icon="reset"

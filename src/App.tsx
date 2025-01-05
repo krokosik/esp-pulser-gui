@@ -6,6 +6,8 @@ import {
   FormGroup,
   InputGroup,
   Navbar,
+  Tab,
+  Tabs,
 } from "@blueprintjs/core";
 import { attachConsole, info } from "@tauri-apps/plugin-log";
 import { check } from "@tauri-apps/plugin-updater";
@@ -74,33 +76,53 @@ const App: React.FC = () => {
         </Navbar.Group>
       </Navbar>
 
-      <div
-        className="content-grid"
-        style={{
-          display: "grid",
-          rowGap: "1rem",
-          gridTemplateColumns: "1fr 1fr 1fr",
-        }}
-      >
-        <Card elevation={Elevation.TWO}>
-          <DeviceInfo />
-        </Card>
-        <Card elevation={Elevation.TWO}>
-          <UpdateStatus />
-        </Card>
-        {connected && (
-          <Card elevation={Elevation.TWO}>
-            <NetworkingStatus />
-          </Card>
-        )}
-        {connected && (
-          <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
-            <HeartbeatPlot />
-          </Card>
-        )}
-        <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
-          <Logs />
-        </Card>
+      <div style={{ marginTop: "1rem" }}>
+        <Tabs large animate defaultSelectedTabId="status">
+          <Tab
+            id="status"
+            title="Status"
+            panel={
+              <div
+                className="content-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                }}
+              >
+                <Card elevation={Elevation.TWO}>
+                  <DeviceInfo />
+                </Card>
+                <Card elevation={Elevation.TWO}>
+                  <UpdateStatus />
+                </Card>
+                {connected && (
+                  <Card elevation={Elevation.TWO}>
+                    <NetworkingStatus />
+                  </Card>
+                )}
+              </div>
+            }
+          />
+          <Tab
+            disabled={!connected}
+            id="plot"
+            title="Data Plot"
+            panel={
+              <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
+                <HeartbeatPlot />
+              </Card>
+            }
+          />
+          <Tab
+            id="logs"
+            title="Logs"
+            panel={
+              <Card elevation={Elevation.TWO} style={{ gridColumn: "span 3" }}>
+                <Logs />
+              </Card>
+            }
+          />
+        </Tabs>
       </div>
     </div>
   );

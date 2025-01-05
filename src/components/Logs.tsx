@@ -37,30 +37,38 @@ const Logs: React.FC = () => {
 
   return (
     <div>
-      <h2>
-        <Icon icon="console" /> Device Logs
-      </h2>
-      <Select<string>
-        items={logFiles}
-        itemRenderer={renderFile}
-        onItemSelect={setSelectedLogFile}
-      >
-        <Button
-          text={selectedLogFile || "Select a log file"}
-          rightIcon="document-open"
-        />
-      </Select>
-      <Button
-        onClick={() => {
-          readLogFiles();
-          readLogContent();
-        }}
-        icon="refresh"
-        text="Refresh"
-      />
       <div
         style={{
-          height: "400px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>
+          <Icon icon="console" /> Device Logs
+        </h2>
+        <Select<string>
+          items={logFiles}
+          itemRenderer={renderFile}
+          onItemSelect={setSelectedLogFile}
+        >
+          <Button
+            text={selectedLogFile || "Select a log file"}
+            rightIcon="document-open"
+          />
+        </Select>
+        <Button
+          onClick={() => {
+            readLogFiles();
+            readLogContent();
+          }}
+          icon="refresh"
+          text="Refresh"
+        />
+      </div>
+      <div
+        style={{
+          height: "350px",
           backgroundColor: "#1C2127",
         }}
       >

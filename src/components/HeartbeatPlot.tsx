@@ -21,16 +21,20 @@ ChartJS.register(
   Title
 );
 
+const dt = 1000 / 500; // 500 Hz sampling rate
+const labels = Array.from(
+  { length: 500 },
+  (_, i) => -Math.round(i * dt)
+).reverse();
+
 const HeartbeatPlot: React.FC = () => {
   const [data, setData] = useState<number[]>([]);
-  const [labels, setLabels] = useState<number[]>([]);
   const chartRef = useRef<any>(null);
 
   useEffect(() => {
     const unlistenPromise = listen("heartbeat_datum", (event) => {
       const datum = event.payload as number;
-      setData((prev) => [...prev.slice(-499), datum]); // Keep the last 50 data points
-      setLabels((prev) => [...prev.slice(-499), prev.length + 1]); // Increment labels
+      setData((prev) => [...prev.slice(-499), datum]);
     });
 
     return () => {
@@ -73,7 +77,7 @@ const HeartbeatPlot: React.FC = () => {
   return (
     <div>
       <h2>Heartbeat Signal</h2>
-      <div style={{ height: "300px" }}>
+      <div style={{ height: "350px" }}>
         <Line ref={chartRef} data={chartData} options={options as any} />
       </div>
     </div>

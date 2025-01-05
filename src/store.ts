@@ -1,11 +1,12 @@
 import { getVersion } from "@tauri-apps/api/app";
-import { invoke } from "@tauri-apps/api/core";
 import { error } from "@tauri-apps/plugin-log";
 import { create } from "zustand";
+import { Store } from "@tauri-apps/plugin-store";
 
+const store = await Store.load("store.json");
 const appVersion = await getVersion();
-const sensorIpAddress = await invoke<string>("get_sensor_ip");
-const tdUdpPort = await invoke<number>("get_td_udp_port");
+const sensorIpAddress = (await store.get<string>("sensor_ip_address")) || "";
+const tdUdpPort = (await store.get<number>("td_udp_port")) || 1024;
 
 interface AppState {
   connected: boolean;
@@ -34,20 +35,17 @@ export const useAppStore = create<AppState>((set) => ({
     set({ firmwareUpdateAvailable }),
   setSensorIpAddress: async (sensorIpAddress) => {
     try {
-      const parts = sensorIpAddress.split(".").map(parseInt);
-      if (
-        parts.length === 4 &&
-        parts.every((part) => part > 0 && part <= 255)
-      ) {
-        await invoke("set_sensor_ip", { ip: sensorIpAddress });
-      }
-      set({ sensorIpAddress });
+      await store.set("sensor_ip_address", sensorIpAddress);
+      await store.save();
+
+      set({ sensorIpAddress, connected: false });
     } catch (e: any) {
       await error(e);
     }
   },
   setTdUdpPort: async (tdUdpPort) => {
-    await invoke("set_td_udp_port", { port: tdUdpPort });
+    await store.set("td_udp_port", tdUdpPort);
+    await store.save();
     set({ tdUdpPort });
   },
 }));

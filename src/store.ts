@@ -24,7 +24,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   appVersion,
-  connected: true,
+  connected: false,
   guiUpdateAvailable: false,
   firmwareUpdateAvailable: false,
   sensorIpAddress,

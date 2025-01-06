@@ -19,7 +19,6 @@ export interface SensorStatus {
 interface AppState {
   connected: boolean;
   guiUpdateAvailable: boolean;
-  firmwareUpdateAvailable: boolean;
   appVersion: string;
   sensorIpAddress: string;
   tdUdpPort: number;
@@ -37,7 +36,6 @@ export const useAppStore = create<AppState>((set) => ({
   appVersion,
   connected: false,
   guiUpdateAvailable: false,
-  firmwareUpdateAvailable: false,
   sensorIpAddress,
   tdUdpPort,
   sensorStatus: null,

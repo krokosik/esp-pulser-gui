@@ -1,15 +1,16 @@
 import { Button, Icon, ProgressBar } from "@blueprintjs/core";
 import { useAppStore } from "../store";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { info, warn } from "@tauri-apps/plugin-log";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
 
 const UpdateStatus: React.FC = () => {
   const {
-    firmwareUpdateAvailable,
+    firmwareVersion,
     connected,
     guiUpdateAvailable,
+    sensorStatus,
     setGuiUpdateAvailable,
   } = useAppStore();
 
@@ -50,6 +51,20 @@ const UpdateStatus: React.FC = () => {
     await relaunch();
   }, []);
 
+  const canUpdateFirmware = useMemo(() => {
+    if (!sensorStatus || !firmwareVersion) return false;
+    const [major, minor, patch] = sensorStatus.version;
+    const [majorUpdate, minorUpdate, patchUpdate] = firmwareVersion
+      .split(".")
+      .map(Number);
+
+    return (
+      majorUpdate > major ||
+      (majorUpdate === major &&
+        (minorUpdate > minor || (minorUpdate === minor && patchUpdate > patch)))
+    );
+  }, [sensorStatus, firmwareVersion]);
+
   return (
     <div>
       <h2>
@@ -68,17 +83,14 @@ const UpdateStatus: React.FC = () => {
         <ProgressBar value={guiUpdateProgress} />
       )}
       {connected && (
-        <p>
-          Firmware Update:{" "}
-          {firmwareUpdateAvailable ? "Available" : "Up to date"}
-        </p>
+        <p>Firmware Update: {canUpdateFirmware ? "Available" : "Up to date"}</p>
       )}
       {connected && (
         <Button
           icon="cloud-download"
           text="OTA Firmware Update"
           style={{ display: "block", margin: "auto" }}
-          disabled={!connected || !firmwareUpdateAvailable}
+          disabled={!connected || !canUpdateFirmware}
         />
       )}
     </div>

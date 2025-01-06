@@ -24,9 +24,10 @@ interface AppState {
   sensorIpAddress: string;
   tdUdpPort: number;
   sensorStatus: SensorStatus | null;
+  firmwareVersion: string | null;
   setConnected: (connected: boolean) => void;
   setGuiUpdateAvailable: (available: boolean) => void;
-  setFirmwareUpdateAvailable: (available: boolean) => void;
+  setFirmwareVersionAvailable: (firmwareVersion: string) => void;
   setSensorIpAddress: (sensorIpAddress: string) => void;
   setTdUdpPort: (tdUdpPort: number) => void;
   setSensorStatus: (sensorStatus: SensorStatus | null) => void;
@@ -40,13 +41,13 @@ export const useAppStore = create<AppState>((set) => ({
   sensorIpAddress,
   tdUdpPort,
   sensorStatus: null,
+  firmwareVersion: null,
   setConnected: (connected) => {
     if (!connected) set({ sensorStatus: null });
     set({ connected });
   },
   setGuiUpdateAvailable: (guiUpdateAvailable) => set({ guiUpdateAvailable }),
-  setFirmwareUpdateAvailable: (firmwareUpdateAvailable) =>
-    set({ firmwareUpdateAvailable }),
+  setFirmwareVersionAvailable: (firmwareVersion) => set({ firmwareVersion }),
   setSensorIpAddress: async (sensorIpAddress) => {
     try {
       await store.set("sensor_ip_address", sensorIpAddress);

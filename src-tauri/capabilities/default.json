@@ -12,6 +12,7 @@
     "fs:default",
     "fs:scope-applog",
     "log:allow-log",
-    "store:default"
+    "store:default",
+    "http:default"
   ]
 }

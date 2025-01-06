@@ -9,8 +9,7 @@ import {
   Tab,
   Tabs,
 } from "@blueprintjs/core";
-import { attachConsole, info } from "@tauri-apps/plugin-log";
-import { check } from "@tauri-apps/plugin-updater";
+import { attachConsole } from "@tauri-apps/plugin-log";
 import { useEffect } from "react";
 import DeviceInfo from "./components/DeviceInfo";
 import HeartbeatPlot from "./components/HeartbeatPlot";
@@ -20,25 +19,10 @@ import UpdateStatus from "./components/UpdateStatus";
 import { useAppStore } from "./store";
 
 const App: React.FC = () => {
-  const {
-    sensorIpAddress,
-    setSensorIpAddress,
-    connected,
-    setGuiUpdateAvailable,
-  } = useAppStore();
+  const { sensorIpAddress, setSensorIpAddress, connected } = useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
-
-    check().then((update) => {
-      if (update) {
-        info(`GUI update available: ${update.version}`);
-        setGuiUpdateAvailable(true);
-      } else {
-        info("No GUI updates available");
-        setGuiUpdateAvailable(false);
-      }
-    });
 
     return () => {
       detachPromise.then((detach) => detach());

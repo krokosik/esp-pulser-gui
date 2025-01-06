@@ -1,9 +1,9 @@
 import { FormGroup, Icon, NumericInput } from "@blueprintjs/core";
-import React, { useState } from "react";
+import React from "react";
 import { useAppStore } from "../store";
 
 const NetworkingStatus: React.FC = () => {
-  const { tdUdpPort, setTdUdpPort } = useAppStore();
+  const { tdUdpPort, setTdUdpPort, sensorStatus } = useAppStore();
 
   const handleUdpChange = (value: string) => {
     setTdUdpPort(Math.min(Math.max(parseInt(value), 1024), 65535) || 0);
@@ -23,16 +23,23 @@ const NetworkingStatus: React.FC = () => {
           buttonPosition="none"
         />
       </FormGroup>
-
       <p>
-        I2C addresses: <strong>0x36 0x5A</strong>
-      </p>
-
-      <p>
-        Motor: <strong style={{ color: "green" }}>OK</strong>
+        Heartbeat:{" "}
+        <strong style={{ color: sensorStatus?.heart_ok ? "green" : "red" }}>
+          {sensorStatus?.heart_ok ? "OK" : "Err"}
+        </strong>
       </p>
       <p>
-        Display: <strong style={{ color: "green" }}>OK</strong>
+        Motor:{" "}
+        <strong style={{ color: sensorStatus?.haptic_ok ? "green" : "red" }}>
+          {sensorStatus?.haptic_ok ? "OK" : "Err"}
+        </strong>
+      </p>
+      <p>
+        Display:{" "}
+        <strong style={{ color: sensorStatus?.display_ok ? "green" : "red" }}>
+          {sensorStatus?.display_ok ? "OK" : "Err"}
+        </strong>
       </p>
     </div>
   );

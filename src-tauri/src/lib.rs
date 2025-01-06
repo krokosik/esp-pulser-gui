@@ -20,6 +20,15 @@ struct AppState {
     listen_udp_port: Option<u16>,
 }
 
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+struct SensorStatus {
+    version: [u8; 3],
+    connected: bool,
+    display_ok: bool,
+    haptic_ok: bool,
+    heart_ok: bool,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -128,7 +137,6 @@ fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
             if state.lock().unwrap().sensor_tcp.is_none() {
                 break;
             } else {
-                app_handle.emit("connection", true)?;
                 std::thread::sleep(std::time::Duration::from_millis(100));
             }
         }
@@ -156,6 +164,7 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         match socket.recv_from(&mut buf) {
             Ok((n, _)) => {
                 last_heartbeat = std::time::Instant::now();
+                app_handle.emit("connection", true)?;
                 if n == 204 {
                     for i in 0..n / 2 {
                         let value = u16::from_be_bytes([buf[i * 2], buf[i * 2 + 1]]);
@@ -170,6 +179,8 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
                             value,
                         )?;
                     }
+                } else if let Ok(status) = bincode::deserialize::<SensorStatus>(&buf[..n]) {
+                    app_handle.emit("sensor_status", status)?;
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}

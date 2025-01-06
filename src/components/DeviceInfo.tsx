@@ -1,29 +1,34 @@
 import { Button, Icon } from "@blueprintjs/core";
 import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
-import { useAppStore } from "../store";
+import { SensorStatus, useAppStore } from "../store";
 
 const DeviceInfo: React.FC = () => {
-  const { appVersion, connected, setConnected } = useAppStore();
+  const { appVersion, connected, setConnected, sensorStatus, setSensorStatus } =
+    useAppStore();
 
   useEffect(() => {
-    const unlistenPromise = listen("connection", (event) => {
+    const unlistenConnectionPromise = listen("connection", (event) => {
       const connected = event.payload as boolean;
-      console.log("Connection event:", connected);
       setConnected(connected);
+    });
+    const unlistenStatusPromise = listen("sensor_status", (event) => {
+      const sensorStatus = event.payload as SensorStatus;
+      setSensorStatus(sensorStatus);
     });
 
     return () => {
-      unlistenPromise.then((fn) => fn());
+      unlistenConnectionPromise.then((fn) => fn());
+      unlistenStatusPromise.then((fn) => fn());
     };
-  }, [setConnected]);
+  }, [setConnected, setSensorStatus]);
 
   return (
     <div>
       <h2>
         <Icon icon="info-sign" /> Device Info
       </h2>
-      <p>Firmware: v1.0.0</p>
+      <p>Firmware: v{sensorStatus?.version.join(".")}</p>
       <p>App Version: v{appVersion}</p>
       <p>
         Connected:{" "}

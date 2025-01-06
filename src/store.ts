@@ -1,12 +1,20 @@
 import { getVersion } from "@tauri-apps/api/app";
 import { error } from "@tauri-apps/plugin-log";
-import { create } from "zustand";
 import { Store } from "@tauri-apps/plugin-store";
+import { create } from "zustand";
 
 const store = await Store.load("store.json");
 const appVersion = await getVersion();
 const sensorIpAddress = (await store.get<string>("sensor_ip_address")) || "";
 const tdUdpPort = (await store.get<number>("td_udp_port")) || 1024;
+
+export interface SensorStatus {
+  version: [number, number, number];
+  connected: boolean;
+  display_ok: boolean;
+  haptic_ok: boolean;
+  heart_ok: boolean;
+}
 
 interface AppState {
   connected: boolean;
@@ -15,11 +23,13 @@ interface AppState {
   appVersion: string;
   sensorIpAddress: string;
   tdUdpPort: number;
+  sensorStatus: SensorStatus | null;
   setConnected: (connected: boolean) => void;
   setGuiUpdateAvailable: (available: boolean) => void;
   setFirmwareUpdateAvailable: (available: boolean) => void;
   setSensorIpAddress: (sensorIpAddress: string) => void;
   setTdUdpPort: (tdUdpPort: number) => void;
+  setSensorStatus: (sensorStatus: SensorStatus | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -29,7 +39,11 @@ export const useAppStore = create<AppState>((set) => ({
   firmwareUpdateAvailable: false,
   sensorIpAddress,
   tdUdpPort,
-  setConnected: (connected) => set({ connected }),
+  sensorStatus: null,
+  setConnected: (connected) => {
+    if (!connected) set({ sensorStatus: null });
+    set({ connected });
+  },
   setGuiUpdateAvailable: (guiUpdateAvailable) => set({ guiUpdateAvailable }),
   setFirmwareUpdateAvailable: (firmwareUpdateAvailable) =>
     set({ firmwareUpdateAvailable }),
@@ -43,6 +57,7 @@ export const useAppStore = create<AppState>((set) => ({
       await error(e);
     }
   },
+  setSensorStatus: (sensorStatus) => set({ sensorStatus }),
   setTdUdpPort: async (tdUdpPort) => {
     await store.set("td_udp_port", tdUdpPort);
     await store.save();

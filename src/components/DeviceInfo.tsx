@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect } from "react";
 import { SensorStatus, useAppStore } from "../store";
 import { check } from "@tauri-apps/plugin-updater";
-import { info } from "@tauri-apps/plugin-log";
+import { error, info } from "@tauri-apps/plugin-log";
 import { fetch } from "@tauri-apps/plugin-http";
 
 const DeviceInfo: React.FC = () => {
@@ -27,11 +27,13 @@ const DeviceInfo: React.FC = () => {
       setSensorStatus(sensorStatus);
     });
 
+    checkUpdates(); // Check for updates on mount
+
     return () => {
       unlistenConnectionPromise.then((fn) => fn());
       unlistenStatusPromise.then((fn) => fn());
     };
-  }, [setConnected, setSensorStatus]);
+  }, []);
 
   const checkUpdates = useCallback(async () => {
     const update = await check();
@@ -43,13 +45,18 @@ const DeviceInfo: React.FC = () => {
       setGuiUpdateAvailable(false);
     }
 
-    const res = await fetch(
-      "https://api.github.com/repos/krokosik/esp-pulser/releases/latest"
-    );
-    const data = await res.json();
-    const firmwareVersion = data.tag_name.slice(1); // Remove the 'v' prefix
-    setFirmwareVersionAvailable(firmwareVersion);
-  }, [setGuiUpdateAvailable, setFirmwareVersionAvailable]);
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/krokosik/esp-pulser/releases/latest"
+      );
+      const data = await res.json();
+      const firmwareVersion = data.tag_name.slice(1); // Remove the 'v' prefix
+      info(`Found firmware version: ${firmwareVersion}`);
+      setFirmwareVersionAvailable(firmwareVersion);
+    } catch (e) {
+      error(`Failed to fetch firmware version: ${e}`);
+    }
+  }, []);
 
   return (
     <div>

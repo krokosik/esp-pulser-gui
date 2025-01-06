@@ -7,7 +7,8 @@ import { useCallback, useEffect, useState } from "react";
 
 const Logs: React.FC = () => {
   const [logFiles, setLogFiles] = useState<string[]>([]);
-  const [selectedLogFile, setSelectedLogFile] = useState<string | null>(null);
+  const [selectedLogFile, setSelectedLogFile] =
+    useState<string>("esp-pulser-gui.log");
   const [logContent, setLogContent] = useState<string>("");
 
   const readLogFiles = useCallback(async () => {

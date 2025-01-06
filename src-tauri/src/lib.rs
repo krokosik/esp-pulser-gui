@@ -1,5 +1,4 @@
 use std::{
-    arch::x86_64::_mm_fnmsub_sd,
     io::Write,
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, UdpSocket},
     str::FromStr,
@@ -60,6 +59,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![sensor_command])
         .setup(|app| {
             #[cfg(desktop)]
             app.handle()
@@ -207,6 +207,18 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         let state = app_handle.state::<Mutex<AppState>>();
         let mut state = state.lock().unwrap();
         state.sensor_tcp = None;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn sensor_command(command: u8, data: String, app_handle: tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    let mut state = state.lock().unwrap();
+    let mut buffer = vec![command];
+    buffer.extend_from_slice(data.as_bytes());
+    if let Some(sensor_tcp) = &mut state.sensor_tcp {
+        sensor_tcp.write(&buffer)?;
     }
     Ok(())
 }

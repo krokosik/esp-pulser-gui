@@ -17,6 +17,8 @@ import Logs from "./components/Logs";
 import NetworkingStatus from "./components/NetworkingStatus";
 import UpdateStatus from "./components/UpdateStatus";
 import { useAppStore } from "./store";
+import { invoke } from "@tauri-apps/api/core";
+import { SensorCommand } from "./const";
 
 const App: React.FC = () => {
   const { sensorIpAddress, setSensorIpAddress, connected } = useAppStore();
@@ -49,6 +51,12 @@ const App: React.FC = () => {
             icon="reset"
             text="Restart board"
             disabled={!connected}
+            onClick={() =>
+              invoke("sensor_command", {
+                command: SensorCommand.Restart,
+                data: "",
+              })
+            }
           />
         </Navbar.Group>
       </Navbar>

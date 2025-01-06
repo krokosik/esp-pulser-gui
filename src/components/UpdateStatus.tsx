@@ -4,6 +4,8 @@ import { useCallback, useMemo, useState } from "react";
 import { info, warn } from "@tauri-apps/plugin-log";
 import { check } from "@tauri-apps/plugin-updater";
 import { relaunch } from "@tauri-apps/plugin-process";
+import { invoke } from "@tauri-apps/api/core";
+import { SensorCommand } from "../const";
 
 const UpdateStatus: React.FC = () => {
   const {
@@ -91,6 +93,12 @@ const UpdateStatus: React.FC = () => {
           text="OTA Firmware Update"
           style={{ display: "block", margin: "auto" }}
           disabled={!connected || !canUpdateFirmware}
+          onClick={() =>
+            invoke("sensor_command", {
+              command: SensorCommand.Update,
+              data: firmwareVersion,
+            })
+          }
         />
       )}
     </div>

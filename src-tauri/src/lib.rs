@@ -131,13 +131,22 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         state.listen_udp_port = Some(socket.local_addr()?.port());
     }
 
-    let mut buf = [0u8; 200];
+    let mut buf = [0u8; 1024];
     loop {
         let (n, _src) = socket.recv_from(&mut buf)?;
         if n % 2 == 0 {
             for i in 0..n / 2 {
                 let value = u16::from_be_bytes([buf[i * 2], buf[i * 2 + 1]]);
-                app_handle.emit("heartbeat_datum", value)?;
+                app_handle.emit(
+                    if i == 0 {
+                        "bpm_datum"
+                    } else if i == 1 {
+                        "ibi_datum"
+                    } else {
+                        "heartbeat_datum"
+                    },
+                    value,
+                )?;
             }
         }
     }

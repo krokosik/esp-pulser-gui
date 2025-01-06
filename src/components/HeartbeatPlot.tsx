@@ -10,6 +10,7 @@ import {
   Title,
 } from "chart.js";
 import { listen } from "@tauri-apps/api/event";
+import { CompoundTag, Icon } from "@blueprintjs/core";
 
 // Register chart components
 ChartJS.register(
@@ -29,16 +30,28 @@ const labels = Array.from(
 
 const HeartbeatPlot: React.FC = () => {
   const [data, setData] = useState<number[]>([]);
+  const [bpm, setBpm] = useState<number | null>(null);
+  const [ibi, setIbi] = useState<number | null>(null);
   const chartRef = useRef<any>(null);
 
   useEffect(() => {
-    const unlistenPromise = listen("heartbeat_datum", (event) => {
+    const unlistenHeartbeatPromise = listen("heartbeat_datum", (event) => {
       const datum = event.payload as number;
       setData((prev) => [...prev.slice(-499), datum]);
     });
+    const unlistenBpmPromise = listen("bpm_datum", (event) => {
+      const bpm = event.payload as number;
+      setBpm(bpm);
+    });
+    const unlistenIbiPromise = listen("ibi_datum", (event) => {
+      const ibi = event.payload as number;
+      setIbi(ibi);
+    });
 
     return () => {
-      unlistenPromise.then((fn) => fn());
+      unlistenHeartbeatPromise.then((fn) => fn());
+      unlistenBpmPromise.then((fn) => fn());
+      unlistenIbiPromise.then((fn) => fn());
     };
   }, []);
 
@@ -76,7 +89,30 @@ const HeartbeatPlot: React.FC = () => {
 
   return (
     <div>
-      <h2>Heartbeat Signal</h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <h2>
+          <Icon icon="graph" /> Heartbeat Signal
+        </h2>
+        <div>
+          <CompoundTag
+            leftContent="BPM"
+            large
+            intent="danger"
+            style={{ marginRight: "1rem" }}
+          >
+            {bpm}
+          </CompoundTag>
+          <CompoundTag leftContent="IBI" large intent="warning">
+            {bpm !== null && bpm > 0 ? ibi : 0} ms
+          </CompoundTag>
+        </div>
+      </div>
       <div style={{ height: "350px" }}>
         <Line ref={chartRef} data={chartData} options={options as any} />
       </div>

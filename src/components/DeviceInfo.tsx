@@ -1,25 +1,22 @@
-import { Icon, Button } from "@blueprintjs/core";
-import { useAppStore } from "../store";
+import { Button, Icon } from "@blueprintjs/core";
+import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { error } from "@tauri-apps/plugin-log";
+import { useAppStore } from "../store";
 
 const DeviceInfo: React.FC = () => {
   const { appVersion, connected, setConnected } = useAppStore();
 
   useEffect(() => {
-    if (connected) {
-      return;
-    }
+    const unlistenPromise = listen("connection", (event) => {
+      const connected = event.payload as boolean;
+      console.log("Connection event:", connected);
+      setConnected(connected);
+    });
 
-    const interval = setInterval(() => {
-      invoke("connect_sensor")
-        .then(() => setConnected(true))
-        .catch(error);
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [connected, setConnected]);
+    return () => {
+      unlistenPromise.then((fn) => fn());
+    };
+  }, [setConnected]);
 
   return (
     <div>

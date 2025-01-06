@@ -72,9 +72,8 @@ const HeartbeatPlot: React.FC = () => {
   const options = {
     scales: {
       y: {
-        beginAtZero: false,
-        suggestedMin: 50,
-        suggestedMax: 100,
+        beginAtZero: true,
+        suggestedMax: 4500,
       },
     },
     responsive: true,

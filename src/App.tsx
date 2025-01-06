@@ -25,7 +25,6 @@ const App: React.FC = () => {
     setSensorIpAddress,
     connected,
     setGuiUpdateAvailable,
-    setConnected,
   } = useAppStore();
 
   useEffect(() => {
@@ -61,12 +60,6 @@ const App: React.FC = () => {
             />
           </FormGroup>
           <Navbar.Divider />
-          <Button
-            className="bp5-minimal"
-            icon="refresh"
-            text="Reconnect"
-            onClick={() => setConnected(false)}
-          />
           <Button
             className="bp5-minimal"
             icon="reset"

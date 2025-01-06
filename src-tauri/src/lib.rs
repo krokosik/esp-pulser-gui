@@ -3,7 +3,6 @@ use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, UdpSocket},
     str::FromStr,
     sync::Mutex,
-    time::Duration,
 };
 
 use anyhow::{anyhow, Context};
@@ -25,7 +24,6 @@ struct AppState {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_store::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![connect_sensor,])
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_opener::init())
@@ -62,6 +60,15 @@ pub fn run() {
                     }
                 }
             });
+            let app_handle = app.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    match connect_sensor(&app_handle) {
+                        Ok(_) => {}
+                        Err(e) => log::error!("Error in sensor connection thread: {:?}", e),
+                    }
+                }
+            });
 
             Ok(())
         })
@@ -69,60 +76,70 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-#[tauri::command]
-fn connect_sensor(
-    app_handle: tauri::AppHandle,
-    state: tauri::State<'_, Mutex<AppState>>,
-) -> Result<()> {
-    let mut state = state.lock().unwrap();
+fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
 
     let store = app_handle
         .get_store(STORE_PATH)
         .context("Store unavailable")?;
 
-    if state.sensor_tcp.is_some() {
-        info!("TCP Stream already exists");
-        return Ok(());
+    loop {
+        info!("Attempting sensor connection");
+        let udp_port = {
+            state
+                .lock()
+                .unwrap()
+                .listen_udp_port
+                .context("Listener UDP port is not yet ready")?
+        };
+
+        let sensor_ip = Ipv4Addr::from_str(
+            serde_json::from_value::<String>(
+                store
+                    .get("sensor_ip_address")
+                    .context("IP address not set")?,
+            )?
+            .as_str(),
+        )
+        .map_err(|e| anyhow!(e))?;
+
+        info!(
+            "Attempting TCP connection to {}:{}",
+            sensor_ip, SENSOR_TCP_PORT
+        );
+
+        let mut sensor_tcp = TcpStream::connect_timeout(
+            &SocketAddr::new(IpAddr::V4(sensor_ip), SENSOR_TCP_PORT),
+            std::time::Duration::from_secs(1),
+        )?;
+        sensor_tcp.set_nonblocking(true)?;
+
+        info!(
+            "Connection established, sending UDP heartbeat listener port: {}",
+            udp_port
+        );
+
+        sensor_tcp.write(&udp_port.to_be_bytes())?;
+        {
+            state.lock().unwrap().sensor_tcp = Some(sensor_tcp);
+        }
+
+        loop {
+            if state.lock().unwrap().sensor_tcp.is_none() {
+                break;
+            } else {
+                app_handle.emit("connection", true)?;
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+        }
+
+        log::warn!("Restarting TCP connection");
     }
-
-    info!("Attempting sensor connection");
-    let udp_port = state
-        .listen_udp_port
-        .context("Listener UDP port is not yet ready")?;
-
-    let sensor_ip = Ipv4Addr::from_str(
-        serde_json::from_value::<String>(
-            store
-                .get("sensor_ip_address")
-                .context("IP address not set")?,
-        )?
-        .as_str(),
-    )
-    .map_err(|e| anyhow!(e))?;
-
-    info!(
-        "Attempting TCP connection to {}:{}",
-        sensor_ip, SENSOR_TCP_PORT
-    );
-
-    let mut sensor_tcp = TcpStream::connect_timeout(
-        &SocketAddr::new(IpAddr::V4(sensor_ip), SENSOR_TCP_PORT),
-        Duration::from_secs(5),
-    )?;
-
-    info!(
-        "Connection established, sending UDP heartbeat listener port: {}",
-        udp_port
-    );
-
-    sensor_tcp.write(&udp_port.to_be_bytes())?;
-    state.sensor_tcp = Some(sensor_tcp);
-
-    Ok(())
 }
 
 fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0))?;
+    socket.set_nonblocking(true)?;
     info!("listening on {:?}", socket.local_addr()?);
 
     {
@@ -132,22 +149,45 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     }
 
     let mut buf = [0u8; 1024];
+    let mut last_heartbeat = std::time::Instant::now();
+
     loop {
-        let (n, _src) = socket.recv_from(&mut buf)?;
-        if n % 2 == 0 {
-            for i in 0..n / 2 {
-                let value = u16::from_be_bytes([buf[i * 2], buf[i * 2 + 1]]);
-                app_handle.emit(
-                    if i == 0 {
-                        "bpm_datum"
-                    } else if i == 1 {
-                        "ibi_datum"
-                    } else {
-                        "heartbeat_datum"
-                    },
-                    value,
-                )?;
+        let now = std::time::Instant::now();
+        match socket.recv_from(&mut buf) {
+            Ok((n, _)) => {
+                last_heartbeat = std::time::Instant::now();
+                if n == 204 {
+                    for i in 0..n / 2 {
+                        let value = u16::from_be_bytes([buf[i * 2], buf[i * 2 + 1]]);
+                        app_handle.emit(
+                            if i == 0 {
+                                "bpm_datum"
+                            } else if i == 1 {
+                                "ibi_datum"
+                            } else {
+                                "heartbeat_datum"
+                            },
+                            value,
+                        )?;
+                    }
+                }
+            }
+            Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) => {
+                log::error!("Error reading from UDP socket: {:?}", e);
+                break;
             }
         }
+        if now.duration_since(last_heartbeat) > std::time::Duration::from_secs(1) {
+            log::error!("No heartbeat received from sensor, restarting connection");
+            app_handle.emit("connection", false)?;
+            break;
+        }
     }
+    {
+        let state = app_handle.state::<Mutex<AppState>>();
+        let mut state = state.lock().unwrap();
+        state.sensor_tcp = None;
+    }
+    Ok(())
 }

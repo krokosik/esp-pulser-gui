@@ -197,7 +197,7 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
                 break;
             }
         }
-        if now.duration_since(last_heartbeat) > std::time::Duration::from_secs(1) {
+        if now.duration_since(last_heartbeat) > std::time::Duration::from_secs(3) {
             log::error!("No heartbeat received from sensor, restarting connection");
             app_handle.emit("connection", false)?;
             break;

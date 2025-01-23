@@ -1,19 +1,19 @@
-import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
-import { Line } from "react-chartjs-2";
+import ChartStreaming from '@robloche/chartjs-plugin-streaming';
 import {
+  CategoryScale,
   Chart as ChartJS,
   LineElement,
   LinearScale,
   PointElement,
-  CategoryScale,
-  Tooltip,
   Title,
+  Tooltip,
 } from "chart.js";
 import 'chartjs-adapter-luxon';
-import ChartStreaming from '@robloche/chartjs-plugin-streaming';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Line } from "react-chartjs-2";
 
-import { listen } from "@tauri-apps/api/event";
 import { CompoundTag, Icon } from "@blueprintjs/core";
+import { listen } from "@tauri-apps/api/event";
 
 // Register chart components
 ChartJS.register(
@@ -106,6 +106,7 @@ const HeartbeatPlot: React.FC = () => {
           refresh: 1000 / SAMPLING_RATE,
           ttl: undefined,
           frameRate: SAMPLING_RATE,
+          duration: 1000 * SAMPLE_COUNT / SAMPLING_RATE,
         }
       }
     },

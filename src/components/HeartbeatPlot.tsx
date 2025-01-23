@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -9,6 +9,9 @@ import {
   Tooltip,
   Title,
 } from "chart.js";
+import 'chartjs-adapter-luxon';
+import ChartStreaming from '@robloche/chartjs-plugin-streaming';
+
 import { listen } from "@tauri-apps/api/event";
 import { CompoundTag, Icon } from "@blueprintjs/core";
 
@@ -19,25 +22,33 @@ ChartJS.register(
   PointElement,
   CategoryScale,
   Tooltip,
-  Title
+  Title,
+  ChartStreaming
 );
 
-const dt = 1000 / 500; // 500 Hz sampling rate
-const labels = Array.from(
-  { length: 500 },
-  (_, i) => -Math.round(i * dt)
-).reverse();
+const SAMPLING_RATE = 25; // 25 Hz sampling rate
+const SAMPLE_COUNT = 200;
 
 const HeartbeatPlot: React.FC = () => {
-  const [data, setData] = useState<number[]>([]);
   const [bpm, setBpm] = useState<number | null>(null);
   const [ibi, setIbi] = useState<number | null>(null);
   const chartRef = useRef<any>(null);
+  const rawChartRef = useRef<any>(null);
 
   useEffect(() => {
+    const unlistenRawHeartbeatPromise = listen("raw_heartbeat_datum", (event) => {
+      const datum = event.payload as number;
+      rawChartRef.current?.data.datasets[0].data.push({
+        x: Date.now(),
+        y: datum,
+      });
+    });
     const unlistenHeartbeatPromise = listen("heartbeat_datum", (event) => {
       const datum = event.payload as number;
-      setData((prev) => [...prev.slice(-499), datum]);
+      chartRef.current?.data.datasets[0].data.push({
+        x: Date.now(),
+        y: datum,
+      });
     });
     const unlistenBpmPromise = listen("bpm_datum", (event) => {
       const bpm = event.payload as number;
@@ -49,32 +60,54 @@ const HeartbeatPlot: React.FC = () => {
     });
 
     return () => {
+      unlistenRawHeartbeatPromise.then((fn) => fn());
       unlistenHeartbeatPromise.then((fn) => fn());
       unlistenBpmPromise.then((fn) => fn());
       unlistenIbiPromise.then((fn) => fn());
     };
   }, []);
 
-  const chartData = {
-    labels,
+  const chartData = useMemo(() => ({
     datasets: [
       {
-        label: "Heartbeat BPM",
-        data,
+        label: "Raw Heartbeat",
+        data: [],
         fill: false,
         borderColor: "#137CBD",
         backgroundColor: "rgba(19, 124, 189, 0.2)",
         tension: 0.1, // Smooth curve
       },
     ],
-  };
+  }), []);
 
-  const options = {
+  const rawChartData = useMemo(() => ({
+    datasets: [
+      {
+        label: "Processed Heartbeat",
+        data: [],
+        fill: false,
+        color: "brown",
+        borderColor: "#137CBD",
+        backgroundColor: "rgba(19, 124, 189, 0.2)",
+        tension: 0.1, // Smooth curve
+      },
+    ],
+  }), []);
+
+  const options = useMemo(() => ({
     scales: {
       y: {
-        beginAtZero: true,
-        suggestedMax: 4500,
+        beginAtZero: false,
       },
+      x: {
+        type: 'realtime',
+        realtime: {
+          delay: 0,
+          refresh: 1000 / SAMPLING_RATE,
+          ttl: undefined,
+          frameRate: SAMPLING_RATE,
+        }
+      }
     },
     responsive: true,
     maintainAspectRatio: false,
@@ -84,7 +117,7 @@ const HeartbeatPlot: React.FC = () => {
       },
     },
     animations: false,
-  };
+  }), []);
 
   return (
     <div>
@@ -112,8 +145,14 @@ const HeartbeatPlot: React.FC = () => {
           </CompoundTag>
         </div>
       </div>
-      <div style={{ height: "350px" }}>
+      <div style={{ height: "260px" }}>
         <Line ref={chartRef} data={chartData} options={options as any} />
+      </div>
+      <h2>
+          <Icon icon="graph" /> Raw Signal
+        </h2>
+      <div style={{ height: "260px" }}>
+        <Line ref={rawChartRef} data={rawChartData} options={options as any} />
       </div>
     </div>
   );

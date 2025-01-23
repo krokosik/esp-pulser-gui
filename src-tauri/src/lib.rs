@@ -29,6 +29,14 @@ struct SensorStatus {
     heart_ok: bool,
 }
 
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+enum Packet {
+    Status(SensorStatus),
+    RawHeartRate(f32),
+    Bpm(f32),
+    HeartRate(f32),
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -166,6 +174,10 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
 
     let mut buf = [0u8; 1024];
     let mut last_heartbeat = std::time::Instant::now();
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open("heartbeat_data.txt")?;
 
     loop {
         let now = std::time::Instant::now();
@@ -173,22 +185,24 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
             Ok((n, _)) => {
                 last_heartbeat = std::time::Instant::now();
                 app_handle.emit("connection", true)?;
-                if n == 204 {
-                    for i in 0..n / 2 {
-                        let value = u16::from_be_bytes([buf[i * 2], buf[i * 2 + 1]]);
-                        app_handle.emit(
-                            if i == 0 {
-                                "bpm_datum"
-                            } else if i == 1 {
-                                "ibi_datum"
-                            } else {
-                                "heartbeat_datum"
-                            },
-                            value,
-                        )?;
+                
+                match bincode::deserialize::<Packet>(&buf[..n]) {
+                    Ok(Packet::Status(status)) => {
+                        app_handle.emit("sensor_status", status)?;
+                    },
+                    Ok(Packet::RawHeartRate(value)) => {
+                        app_handle.emit("raw_heartbeat_datum", value)?;
+                    },
+                    Ok(Packet::Bpm(value)) => {
+                        app_handle.emit("bpm_datum", value)?;
+                        app_handle.emit("ibi_datum", 60000.0 / value)?;
+                    },
+                    Ok(Packet::HeartRate(value)) => {
+                        app_handle.emit("heartbeat_datum", value)?;
+                    },
+                    Err(e) => {
+                        log::warn!("Error deserializing packet: {:?}", e);
                     }
-                } else if let Ok(status) = bincode::deserialize::<SensorStatus>(&buf[..n]) {
-                    app_handle.emit("sensor_status", status)?;
                 }
             }
             Err(ref e) if e.kind() == std::io::ErrorKind::WouldBlock => {}

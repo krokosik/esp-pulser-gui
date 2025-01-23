@@ -69,7 +69,7 @@ const Logs: React.FC = () => {
       </div>
       <div
         style={{
-          height: "350px",
+          height: "600px",
           backgroundColor: "#1C2127",
         }}
       >

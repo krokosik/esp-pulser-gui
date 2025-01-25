@@ -2,12 +2,12 @@ use std::{
     io::Write,
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, UdpSocket},
     str::FromStr,
-    sync::Mutex,
+    sync::{Arc, Mutex},
 };
 
 use anyhow::{anyhow, Context};
 use log::info;
-use tauri::{Emitter, Manager, Result};
+use tauri::{Emitter, Listener, Manager, Result};
 use tauri_plugin_log::{fern::colors::ColoredLevelConfig, Target, TargetKind};
 use tauri_plugin_store::StoreExt;
 
@@ -17,6 +17,7 @@ const STORE_PATH: &str = "store.json";
 #[derive(Default)]
 struct AppState {
     sensor_tcp: Option<TcpStream>,
+    td_udp: Option<Arc<UdpSocket>>,
     listen_udp_port: Option<u16>,
 }
 
@@ -67,7 +68,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![sensor_command])
+        .invoke_handler(tauri::generate_handler![sensor_command, change_td_port])
         .setup(|app| {
             #[cfg(desktop)]
             app.handle()
@@ -91,6 +92,16 @@ pub fn run() {
                     match connect_sensor(&app_handle) {
                         Ok(_) => {}
                         Err(e) => log::error!("Error in sensor connection thread: {:?}", e),
+                    }
+                }
+            });
+
+            let app_handle = app.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    match touch_designer_thread(&app_handle) {
+                        Ok(_) => {}
+                        Err(e) => log::error!("Error in TouchDesigner thread: {:?}", e),
                     }
                 }
             });
@@ -161,6 +172,93 @@ fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
     }
 }
 
+fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+
+    let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0))?;
+    let socket = Arc::new(socket);
+    {
+        let mut state = state.lock().unwrap();
+        state.td_udp = Some(socket.clone());
+    }
+    
+    let store = app_handle
+        .get_store(STORE_PATH)
+        .context("Store unavailable")?;
+
+    let td_port = serde_json::from_value::<u16>(
+        store
+            .get("td_udp_port")
+            .context("TouchDesigner port not set")?,
+    )?;
+    socket.connect(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), td_port))?;
+
+
+    let heartbeat_addr = "/heartbeat_signal".to_string();
+
+    {
+        let socket = socket.clone();
+        app_handle.listen("heartbeat_datum", move |event| {
+            let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
+                addr: heartbeat_addr.clone(),
+                args: vec![rosc::OscType::Float(event.payload().parse().unwrap())],
+            }))
+            .unwrap();
+
+            match socket.send(&buf) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Error sending to TouchDesigner: {:?}", e);
+                }
+            }
+        });
+    }
+
+    let bpm_addr = "/bpm".to_string();
+
+    {
+        let socket = socket.clone();
+        app_handle.listen("bpm_datum", move |event| {
+            let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
+                addr: bpm_addr.clone(),
+                args: vec![rosc::OscType::Float(event.payload().parse().unwrap())],
+            }))
+            .unwrap();
+
+            match socket.send(&buf) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Error sending to TouchDesigner: {:?}", e);
+                }
+            }
+        });
+    }
+
+    let ibi_addr = "/ibi".to_string();
+
+    {
+        let socket = socket.clone();
+        app_handle.listen("ibi_datum", move |event| {
+            let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
+                addr: ibi_addr.clone(),
+                args: vec![rosc::OscType::Float(event.payload().parse().unwrap())],
+            }))
+            .unwrap();
+
+            match socket.send(&buf) {
+                Ok(_) => {}
+                Err(e) => {
+                    log::error!("Error sending to TouchDesigner: {:?}", e);
+                }
+            }
+        });
+    }
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs(10));
+    }
+}
+
 fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0))?;
     socket.set_nonblocking(true)?;
@@ -174,10 +272,10 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
 
     let mut buf = [0u8; 1024];
     let mut last_heartbeat = std::time::Instant::now();
-    let mut file = std::fs::OpenOptions::new()
-        .append(true)
-        .create(true)
-        .open("heartbeat_data.txt")?;
+    // let mut file = std::fs::OpenOptions::new()
+    //     .append(true)
+    //     .create(true)
+    //     .open("heartbeat_data.txt")?;
 
     loop {
         let now = std::time::Instant::now();
@@ -185,21 +283,21 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
             Ok((n, _)) => {
                 last_heartbeat = std::time::Instant::now();
                 app_handle.emit("connection", true)?;
-                
+
                 match bincode::deserialize::<Packet>(&buf[..n]) {
                     Ok(Packet::Status(status)) => {
                         app_handle.emit("sensor_status", status)?;
-                    },
+                    }
                     Ok(Packet::RawHeartRate(value)) => {
                         app_handle.emit("raw_heartbeat_datum", value)?;
-                    },
+                    }
                     Ok(Packet::Bpm(value)) => {
                         app_handle.emit("bpm_datum", value)?;
                         app_handle.emit("ibi_datum", 60000.0 / value)?;
-                    },
+                    }
                     Ok(Packet::HeartRate(value)) => {
                         app_handle.emit("heartbeat_datum", value)?;
-                    },
+                    }
                     Err(e) => {
                         log::warn!("Error deserializing packet: {:?}", e);
                     }
@@ -233,6 +331,16 @@ fn sensor_command(command: u8, data: String, app_handle: tauri::AppHandle) -> Re
     buffer.extend_from_slice(data.as_bytes());
     if let Some(sensor_tcp) = &mut state.sensor_tcp {
         sensor_tcp.write(&buffer)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn change_td_port(port: u16, app_handle: tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    let mut state = state.lock().unwrap();
+    if let Some(socket) = &mut state.td_udp {
+        socket.connect(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))?;
     }
     Ok(())
 }

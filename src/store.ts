@@ -1,4 +1,5 @@
 import { getVersion } from "@tauri-apps/api/app";
+import { invoke } from "@tauri-apps/api/core";
 import { error } from "@tauri-apps/plugin-log";
 import { Store } from "@tauri-apps/plugin-store";
 import { create } from "zustand";
@@ -60,6 +61,7 @@ export const useAppStore = create<AppState>((set) => ({
   setTdUdpPort: async (tdUdpPort) => {
     await store.set("td_udp_port", tdUdpPort);
     await store.save();
+    await invoke("change_td_port", { port: tdUdpPort });
     set({ tdUdpPort });
   },
 }));

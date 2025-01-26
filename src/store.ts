@@ -19,6 +19,7 @@ export interface SensorStatus {
 
 interface AppState {
   connected: boolean;
+  dummyData: boolean;
   guiUpdateAvailable: boolean;
   appVersion: string;
   sensorIpAddress: string;
@@ -26,6 +27,7 @@ interface AppState {
   sensorStatus: SensorStatus | null;
   firmwareVersion: string | null;
   setConnected: (connected: boolean) => void;
+  toggleDummyData: () => void;
   setGuiUpdateAvailable: (available: boolean) => void;
   setFirmwareVersionAvailable: (firmwareVersion: string) => void;
   setSensorIpAddress: (sensorIpAddress: string) => void;
@@ -33,9 +35,10 @@ interface AppState {
   setSensorStatus: (sensorStatus: SensorStatus | null) => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   appVersion,
   connected: false,
+  dummyData: false,
   guiUpdateAvailable: false,
   sensorIpAddress,
   tdUdpPort,
@@ -44,6 +47,10 @@ export const useAppStore = create<AppState>((set) => ({
   setConnected: (connected) => {
     if (!connected) set({ sensorStatus: null });
     set({ connected });
+  },
+  toggleDummyData: async () => {
+    await invoke("set_dummy_data", { emitDummy: !get().dummyData });
+    set((state) => ({ dummyData: !state.dummyData }));
   },
   setGuiUpdateAvailable: (guiUpdateAvailable) => set({ guiUpdateAvailable }),
   setFirmwareVersionAvailable: (firmwareVersion) => set({ firmwareVersion }),

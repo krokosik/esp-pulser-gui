@@ -6,6 +6,7 @@ import {
   FormGroup,
   InputGroup,
   Navbar,
+  Switch,
   Tab,
   Tabs,
 } from "@blueprintjs/core";
@@ -21,7 +22,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { SensorCommand } from "./const";
 
 const App: React.FC = () => {
-  const { sensorIpAddress, setSensorIpAddress, connected } = useAppStore();
+  const { sensorIpAddress, setSensorIpAddress, connected, dummyData, toggleDummyData } = useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
@@ -34,7 +35,7 @@ const App: React.FC = () => {
   return (
     <div className="app-container" style={{ height: "100vh", padding: "1rem" }}>
       <Navbar>
-        <Navbar.Group align={Alignment.LEFT}>
+        <Navbar.Group align={Alignment.LEFT} style={{ width: "100%", justifyContent: "space-between" }}>
           <Navbar.Heading>ESP32 Dashboard</Navbar.Heading>
           <Navbar.Divider />
           <FormGroup label="IP Address" inline style={{ margin: 0 }}>
@@ -58,6 +59,7 @@ const App: React.FC = () => {
               })
             }
           />
+          <Switch checked={dummyData} onChange={toggleDummyData} style={{ margin: 0 }}>Dummy Data</Switch>
         </Navbar.Group>
       </Navbar>
 
@@ -80,11 +82,9 @@ const App: React.FC = () => {
                 <Card elevation={Elevation.TWO}>
                   <UpdateStatus />
                 </Card>
-                {connected && (
-                  <Card elevation={Elevation.TWO}>
-                    <NetworkingStatus />
-                  </Card>
-                )}
+                <Card elevation={Elevation.TWO}>
+                  <NetworkingStatus />
+                </Card>
               </div>
             }
           />

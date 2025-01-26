@@ -6,7 +6,7 @@ const NetworkingStatus: React.FC = () => {
   const { tdUdpPort, setTdUdpPort, sensorStatus } = useAppStore();
 
   const handleUdpChange = (value: string) => {
-    setTdUdpPort(Math.min(Math.max(parseInt(value), 1024), 65535) || 0);
+    setTdUdpPort(parseInt(value));
   };
 
   return (

@@ -1,5 +1,5 @@
 use std::{
-    io::Write,
+    io::{BufRead, BufReader, Write},
     net::{IpAddr, Ipv4Addr, SocketAddr, SocketAddrV4, TcpStream, UdpSocket},
     str::FromStr,
     sync::{Arc, Mutex},
@@ -19,6 +19,7 @@ struct AppState {
     sensor_tcp: Option<TcpStream>,
     td_udp: Option<Arc<UdpSocket>>,
     listen_udp_port: Option<u16>,
+    emit_dummy: bool,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -68,7 +69,7 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![sensor_command, change_td_port])
+        .invoke_handler(tauri::generate_handler![sensor_command, change_td_port, set_dummy_data])
         .setup(|app| {
             #[cfg(desktop)]
             app.handle()
@@ -82,16 +83,26 @@ pub fn run() {
                 loop {
                     match sensor_thread(&app_handle) {
                         Ok(_) => {}
-                        Err(e) => log::error!("Error in UDP listener thread: {:?}", e),
+                        Err(e) => {
+                            log::error!("Error in UDP listener thread: {:?}", e);
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
                     }
                 }
             });
             let app_handle = app.app_handle().clone();
             tauri::async_runtime::spawn(async move {
+                let mut error_count = 0;
                 loop {
-                    match connect_sensor(&app_handle) {
+                    match connect_sensor(&app_handle, &mut error_count) {
                         Ok(_) => {}
-                        Err(e) => log::error!("Error in sensor connection thread: {:?}", e),
+                        Err(e) => {
+                            error_count += 1;
+                            if error_count < 5 {
+                                log::error!("Error in sensor connection thread: {:?}", e);
+                            }
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
                     }
                 }
             });
@@ -101,7 +112,23 @@ pub fn run() {
                 loop {
                     match touch_designer_thread(&app_handle) {
                         Ok(_) => {}
-                        Err(e) => log::error!("Error in TouchDesigner thread: {:?}", e),
+                        Err(e) => {
+                            log::error!("Error in TouchDesigner thread: {:?}", e);
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
+                    }
+                }
+            });
+
+            let app_handle = app.app_handle().clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    match dummy_data_thread(&app_handle) {
+                        Ok(_) => {}
+                        Err(e) => {
+                            log::error!("Error in dummy data thread: {:?}", e);
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
                     }
                 }
             });
@@ -112,7 +139,35 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
+fn dummy_data_thread(app_handle: &tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    loop {
+        let file = std::fs::File::open("heartbeat_data.txt")?;
+        let bufread = BufReader::new(&file);
+
+        {
+            while !state.lock().unwrap().emit_dummy {
+                std::thread::sleep(std::time::Duration::from_secs(1));
+            }
+        }
+
+        log::info!("Sending dummy data");
+
+        for line in bufread.lines() {
+            if !state.lock().unwrap().emit_dummy {
+                break;
+            }
+            let line = line?;
+            let value = line.parse::<f32>().map_err(|e| anyhow::anyhow!(e))?;
+            app_handle.emit("heartbeat_datum", value)?;
+            app_handle.emit("bpm_datum", 80.0 / value)?;
+            app_handle.emit("ibi_datum", 800)?;
+            std::thread::sleep(std::time::Duration::from_millis(40));
+        }
+    }
+}
+
+fn connect_sensor(app_handle: &tauri::AppHandle, error_count: &mut u8) -> Result<()> {
     let state = app_handle.state::<Mutex<AppState>>();
 
     let store = app_handle
@@ -120,7 +175,7 @@ fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
         .context("Store unavailable")?;
 
     loop {
-        info!("Attempting sensor connection");
+        log::debug!("Attempting sensor connection");
         let udp_port = {
             state
                 .lock()
@@ -139,9 +194,10 @@ fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
         )
         .map_err(|e| anyhow!(e))?;
 
-        info!(
+        log::debug!(
             "Attempting TCP connection to {}:{}",
-            sensor_ip, SENSOR_TCP_PORT
+            sensor_ip,
+            SENSOR_TCP_PORT
         );
 
         let mut sensor_tcp = TcpStream::connect_timeout(
@@ -159,6 +215,8 @@ fn connect_sensor(app_handle: &tauri::AppHandle) -> Result<()> {
         {
             state.lock().unwrap().sensor_tcp = Some(sensor_tcp);
         }
+
+        *error_count = 0;
 
         loop {
             if state.lock().unwrap().sensor_tcp.is_none() {
@@ -181,7 +239,7 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         let mut state = state.lock().unwrap();
         state.td_udp = Some(socket.clone());
     }
-    
+
     let store = app_handle
         .get_store(STORE_PATH)
         .context("Store unavailable")?;
@@ -192,7 +250,6 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
             .context("TouchDesigner port not set")?,
     )?;
     socket.connect(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), td_port))?;
-
 
     let heartbeat_addr = "/heartbeat_signal".to_string();
 
@@ -260,22 +317,26 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
 }
 
 fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
     let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0))?;
     socket.set_nonblocking(true)?;
     info!("listening on {:?}", socket.local_addr()?);
 
     {
-        let state = app_handle.state::<Mutex<AppState>>();
         let mut state = state.lock().unwrap();
         state.listen_udp_port = Some(socket.local_addr()?.port());
     }
 
+    loop {
+        if state.lock().unwrap().sensor_tcp.is_none() {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+        } else {
+            break;
+        }
+    }
+
     let mut buf = [0u8; 1024];
     let mut last_heartbeat = std::time::Instant::now();
-    // let mut file = std::fs::OpenOptions::new()
-    //     .append(true)
-    //     .create(true)
-    //     .open("heartbeat_data.txt")?;
 
     loop {
         let now = std::time::Instant::now();
@@ -339,8 +400,17 @@ fn sensor_command(command: u8, data: String, app_handle: tauri::AppHandle) -> Re
 fn change_td_port(port: u16, app_handle: tauri::AppHandle) -> Result<()> {
     let state = app_handle.state::<Mutex<AppState>>();
     let mut state = state.lock().unwrap();
+    log::info!("Changing TD port to {}", port);
     if let Some(socket) = &mut state.td_udp {
         socket.connect(SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port))?;
     }
+    Ok(())
+}
+
+#[tauri::command]
+fn set_dummy_data(emit_dummy: bool, app_handle: tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    let mut state = state.lock().unwrap();
+    state.emit_dummy = emit_dummy;
     Ok(())
 }

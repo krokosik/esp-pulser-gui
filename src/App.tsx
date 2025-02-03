@@ -89,7 +89,6 @@ const App: React.FC = () => {
             }
           />
           <Tab
-            disabled={!connected}
             id="plot"
             title="Data Plot"
             panel={

@@ -37,6 +37,7 @@ enum Packet {
     RawHeartRate(f32),
     Bpm(f32),
     HeartRate(f32),
+    // Debug((f32, f32, f32)),
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -69,7 +70,11 @@ pub fn run() {
                 .build(),
         )
         .plugin(tauri_plugin_store::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![sensor_command, change_td_port, set_dummy_data])
+        .invoke_handler(tauri::generate_handler![
+            sensor_command,
+            change_td_port,
+            set_dummy_data
+        ])
         .setup(|app| {
             #[cfg(desktop)]
             app.handle()
@@ -142,7 +147,7 @@ pub fn run() {
 fn dummy_data_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let state = app_handle.state::<Mutex<AppState>>();
     loop {
-        let file = std::fs::File::open("heartbeat_data.txt")?;
+        let file = std::fs::File::open("heartbeat_data.dat")?;
         let bufread = BufReader::new(&file);
 
         {
@@ -158,10 +163,16 @@ fn dummy_data_thread(app_handle: &tauri::AppHandle) -> Result<()> {
                 break;
             }
             let line = line?;
-            let value = line.parse::<f32>().map_err(|e| anyhow::anyhow!(e))?;
-            app_handle.emit("heartbeat_datum", value)?;
-            app_handle.emit("bpm_datum", 80.0 / value)?;
-            app_handle.emit("ibi_datum", 800)?;
+            let [raw, processed, bpm, ibi] = line
+                .split_whitespace()
+                .map(|s| s.parse::<f32>().unwrap_or_default())
+                .collect::<Vec<f32>>()
+                .try_into()
+                .unwrap_or_default();
+            app_handle.emit("raw_heartbeat_datum", raw)?;
+            app_handle.emit("heartbeat_datum", processed)?;
+            app_handle.emit("bpm_datum", bpm)?;
+            app_handle.emit("ibi_datum", ibi)?;
             std::thread::sleep(std::time::Duration::from_millis(40));
         }
     }
@@ -258,7 +269,9 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         app_handle.listen("heartbeat_datum", move |event| {
             let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
                 addr: heartbeat_addr.clone(),
-                args: vec![rosc::OscType::Float(event.payload().parse().unwrap_or_default())],
+                args: vec![rosc::OscType::Float(
+                    event.payload().parse().unwrap_or_default(),
+                )],
             }))
             .unwrap();
 
@@ -278,7 +291,9 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         app_handle.listen("bpm_datum", move |event| {
             let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
                 addr: bpm_addr.clone(),
-                args: vec![rosc::OscType::Float(event.payload().parse().unwrap_or_default())],
+                args: vec![rosc::OscType::Float(
+                    event.payload().parse().unwrap_or_default(),
+                )],
             }))
             .unwrap();
 
@@ -298,7 +313,9 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         app_handle.listen("ibi_datum", move |event| {
             let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
                 addr: ibi_addr.clone(),
-                args: vec![rosc::OscType::Float(event.payload().parse().unwrap_or_default())],
+                args: vec![rosc::OscType::Float(
+                    event.payload().parse().unwrap_or_default(),
+                )],
             }))
             .unwrap();
 
@@ -326,6 +343,11 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         let mut state = state.lock().unwrap();
         state.listen_udp_port = Some(socket.local_addr()?.port());
     }
+
+    // let mut file = std::fs::OpenOptions::new()
+    //     .append(true)
+    //     .create(true)
+    //     .open("heartbeat_data.dat")?;
 
     loop {
         if state.lock().unwrap().sensor_tcp.is_none() {
@@ -359,6 +381,13 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
                     Ok(Packet::HeartRate(value)) => {
                         app_handle.emit("heartbeat_datum", value)?;
                     }
+                    // Ok(Packet::Debug((raw, processed, bpm))) => {
+                    //     writeln!(file, "{} {} {} {}", raw, processed, bpm, 60000.0 / bpm)?;
+                    //     app_handle.emit("raw_heartbeat_datum", raw)?;
+                    //     app_handle.emit("heartbeat_datum", processed)?;
+                    //     app_handle.emit("bpm_datum", bpm)?;
+                    //     app_handle.emit("ibi_datum", 60000.0 / bpm)?;
+                    // }
                     Err(e) => {
                         log::warn!("Error deserializing packet: {:?}", e);
                     }

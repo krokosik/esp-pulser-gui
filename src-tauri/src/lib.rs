@@ -258,7 +258,7 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         app_handle.listen("heartbeat_datum", move |event| {
             let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
                 addr: heartbeat_addr.clone(),
-                args: vec![rosc::OscType::Float(event.payload().parse().unwrap())],
+                args: vec![rosc::OscType::Float(event.payload().parse().unwrap_or_default())],
             }))
             .unwrap();
 
@@ -278,7 +278,7 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         app_handle.listen("bpm_datum", move |event| {
             let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
                 addr: bpm_addr.clone(),
-                args: vec![rosc::OscType::Float(event.payload().parse().unwrap())],
+                args: vec![rosc::OscType::Float(event.payload().parse().unwrap_or_default())],
             }))
             .unwrap();
 
@@ -298,7 +298,7 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
         app_handle.listen("ibi_datum", move |event| {
             let buf = rosc::encoder::encode(&rosc::OscPacket::Message(rosc::OscMessage {
                 addr: ibi_addr.clone(),
-                args: vec![rosc::OscType::Float(event.payload().parse().unwrap())],
+                args: vec![rosc::OscType::Float(event.payload().parse().unwrap_or_default())],
             }))
             .unwrap();
 

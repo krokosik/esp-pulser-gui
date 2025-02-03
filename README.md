@@ -1,7 +1,13 @@
-# Tauri + React + Typescript
+# ESP Pulser GUI
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+## Description
 
-## Recommended IDE Setup
+This desktop app is a companion to the [esp-pulser](https://github.com/krokosik/esp-pulser-gui). It can be used to view component status, update version and more, assuming it is connected to the same local network. It also is responsible to retransmitting the UDP heartbeat data from the sensor to TouchDesigner via OSC. Additionally, it allows viewing the heartbeat data and the collected logs (only from the app, not the sensor).
 
-- [VS Code](https://code.visualstudio.com/) + [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode) + [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+## Development
+
+To work with the code, both Rust and NodeJS need to be set up. Clone the repo and run
+```
+npm run tauri dev
+```
+to start developing.

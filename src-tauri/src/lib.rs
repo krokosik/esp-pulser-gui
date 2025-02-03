@@ -146,8 +146,10 @@ pub fn run() {
 
 fn dummy_data_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let state = app_handle.state::<Mutex<AppState>>();
+    let hb_data_path = app_handle.path().resolve("heartbeat_data.dat", tauri::path::BaseDirectory::Resource)?;
+
     loop {
-        let file = std::fs::File::open("heartbeat_data.dat")?;
+        let file = std::fs::File::open(hb_data_path.clone())?;
         let bufread = BufReader::new(&file);
 
         {

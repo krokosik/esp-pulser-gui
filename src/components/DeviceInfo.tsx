@@ -63,7 +63,7 @@ const DeviceInfo: React.FC = () => {
       <h2>
         <Icon icon="info-sign" /> Device Info
       </h2>
-      <p>Firmware: v{sensorStatus?.version.join(".")}</p>
+      {sensorStatus && <p>Firmware: v{sensorStatus.version.join(".")}</p>}
       <p>App Version: v{appVersion}</p>
       <p>
         Connected:{" "}

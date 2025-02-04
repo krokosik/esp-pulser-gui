@@ -78,7 +78,7 @@ const UpdateStatus: React.FC = () => {
           icon="cloud-upload"
           text="GUI Update"
           style={{ display: "block", margin: "auto", marginBottom: "10px" }}
-          disabled={!connected || !guiUpdateAvailable}
+          disabled={!guiUpdateAvailable}
           onClick={updateGui}
         />
       ) : (

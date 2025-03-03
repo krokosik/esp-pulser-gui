@@ -26,7 +26,7 @@ ChartJS.register(
   ChartStreaming
 );
 
-const SAMPLING_RATE = 25; // 25 Hz sampling rate
+const SAMPLING_RATE = 50; // 25 Hz sampling rate
 const SAMPLE_COUNT = 200;
 
 const HeartbeatPlot: React.FC = () => {
@@ -103,7 +103,7 @@ const HeartbeatPlot: React.FC = () => {
         type: 'realtime',
         realtime: {
           delay: 0,
-          refresh: 1000 / SAMPLING_RATE,
+          refresh: 500 / SAMPLING_RATE,
           ttl: undefined,
           frameRate: SAMPLING_RATE,
           duration: 1000 * SAMPLE_COUNT / SAMPLING_RATE,

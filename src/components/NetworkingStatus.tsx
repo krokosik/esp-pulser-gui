@@ -12,7 +12,7 @@ const NetworkingStatus: React.FC = () => {
 
   React.useEffect(() => {
     setLocalAmp(sensorStatus?.led_amplitude || 0);
-  }, [sensorStatus, connected]);
+  }, [sensorStatus?.led_amplitude]);
 
   return (
     <div>

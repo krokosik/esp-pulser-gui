@@ -29,6 +29,7 @@ struct SensorStatus {
     display_ok: bool,
     haptic_ok: bool,
     heart_ok: bool,
+    led_amplitude: u8,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -73,7 +74,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             sensor_command,
             change_td_port,
-            set_dummy_data
+            set_dummy_data,
+            change_led_amplitude
         ])
         .setup(|app| {
             #[cfg(desktop)]
@@ -224,7 +226,11 @@ fn connect_sensor(app_handle: &tauri::AppHandle, error_count: &mut u8) -> Result
             udp_port
         );
 
-        sensor_tcp.write(&udp_port.to_be_bytes())?;
+        let mut buffer = [0u8; 3];
+        buffer[0] = 3;
+        buffer[1] = udp_port.to_be_bytes()[0];
+        buffer[2] = udp_port.to_be_bytes()[1];
+        sensor_tcp.write(&buffer)?;
         {
             state.lock().unwrap().sensor_tcp = Some(sensor_tcp);
         }
@@ -361,6 +367,7 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
 
     let mut buf = [0u8; 1024];
     let mut last_heartbeat = std::time::Instant::now();
+    app_handle.emit("connection", true)?;
 
     loop {
         let now = std::time::Instant::now();
@@ -401,11 +408,12 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
                 break;
             }
         }
-        if now.duration_since(last_heartbeat) > std::time::Duration::from_secs(3) {
+        if now.duration_since(last_heartbeat) > std::time::Duration::from_secs(10) {
             log::error!("No heartbeat received from sensor, restarting connection");
             app_handle.emit("connection", false)?;
             break;
         }
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
     {
         let state = app_handle.state::<Mutex<AppState>>();
@@ -443,5 +451,16 @@ fn set_dummy_data(emit_dummy: bool, app_handle: tauri::AppHandle) -> Result<()> 
     let state = app_handle.state::<Mutex<AppState>>();
     let mut state = state.lock().unwrap();
     state.emit_dummy = emit_dummy;
+    Ok(())
+}
+
+#[tauri::command]
+fn change_led_amplitude(amplitude: u8, app_handle: tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    let mut state = state.lock().unwrap();
+    let buffer = [2, amplitude];
+    if let Some(sensor_tcp) = &mut state.sensor_tcp {
+        sensor_tcp.write(&buffer)?;
+    }
     Ok(())
 }

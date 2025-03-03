@@ -1,0 +1,17 @@
+[project]
+name = "src-python"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "hvplot>=0.10.0",
+    "ipykernel>=6.29.5",
+    "jupyter-bokeh>=4.0.5",
+    "numpy<2",
+    "pyparsing>=3.2.1",
+    "scipy>=1.10.1",
+    "xarray>=2023.1.0",
+    "xrft>=1.0.1",
+    "xrscipy>2",
+]

@@ -12,7 +12,7 @@ import "chartjs-adapter-luxon";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 
-import { CompoundTag, Icon } from "@blueprintjs/core";
+import { Callout, CompoundTag, Icon } from "@blueprintjs/core";
 import { listen } from "@tauri-apps/api/event";
 
 // Register chart components
@@ -134,6 +134,10 @@ const HeartbeatPlot: React.FC = () => {
 
   return (
     <div>
+      <Callout intent="warning">
+        These graphs consume considerable CPU resources. Do not leave them open
+        when unused.
+      </Callout>
       <div
         style={{
           display: "flex",
@@ -158,13 +162,13 @@ const HeartbeatPlot: React.FC = () => {
           </CompoundTag>
         </div>
       </div>
-      <div style={{ height: "260px" }}>
+      <div style={{ height: "240px" }}>
         <Line ref={chartRef} data={chartData} options={options as any} />
       </div>
       <h2>
         <Icon icon="graph" /> Raw Signal
       </h2>
-      <div style={{ height: "260px" }}>
+      <div style={{ height: "240px" }}>
         <Line ref={rawChartRef} data={rawChartData} options={options as any} />
       </div>
     </div>

@@ -79,7 +79,12 @@ const App: React.FC = () => {
       </Navbar>
 
       <div style={{ marginTop: "1rem" }}>
-        <Tabs large animate defaultSelectedTabId="status">
+        <Tabs
+          large
+          animate
+          defaultSelectedTabId="status"
+          renderActiveTabPanelOnly
+        >
           <Tab
             id="status"
             title="Status"

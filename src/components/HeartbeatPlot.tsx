@@ -1,4 +1,4 @@
-import ChartStreaming from '@robloche/chartjs-plugin-streaming';
+import ChartStreaming from "@robloche/chartjs-plugin-streaming";
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -8,7 +8,7 @@ import {
   Title,
   Tooltip,
 } from "chart.js";
-import 'chartjs-adapter-luxon';
+import "chartjs-adapter-luxon";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Line } from "react-chartjs-2";
 
@@ -26,8 +26,8 @@ ChartJS.register(
   ChartStreaming
 );
 
-const SAMPLING_RATE = 50; // 25 Hz sampling rate
-const SAMPLE_COUNT = 200;
+const SAMPLING_RATE = 25; // 25 Hz sampling rate
+const SAMPLE_COUNT = 100;
 
 const HeartbeatPlot: React.FC = () => {
   const [bpm, setBpm] = useState<number | null>(null);
@@ -36,13 +36,16 @@ const HeartbeatPlot: React.FC = () => {
   const rawChartRef = useRef<any>(null);
 
   useEffect(() => {
-    const unlistenRawHeartbeatPromise = listen("raw_heartbeat_datum", (event) => {
-      const datum = event.payload as number;
-      rawChartRef.current?.data.datasets[0].data.push({
-        x: Date.now(),
-        y: datum,
-      });
-    });
+    const unlistenRawHeartbeatPromise = listen(
+      "raw_heartbeat_datum",
+      (event) => {
+        const datum = event.payload as number;
+        rawChartRef.current?.data.datasets[0].data.push({
+          x: Date.now(),
+          y: datum,
+        });
+      }
+    );
     const unlistenHeartbeatPromise = listen("heartbeat_datum", (event) => {
       const datum = event.payload as number;
       chartRef.current?.data.datasets[0].data.push({
@@ -67,58 +70,67 @@ const HeartbeatPlot: React.FC = () => {
     };
   }, []);
 
-  const chartData = useMemo(() => ({
-    datasets: [
-      {
-        label: "Raw Heartbeat",
-        data: [],
-        fill: false,
-        borderColor: "#137CBD",
-        backgroundColor: "rgba(19, 124, 189, 0.2)",
-        tension: 0.1, // Smooth curve
-      },
-    ],
-  }), []);
+  const chartData = useMemo(
+    () => ({
+      datasets: [
+        {
+          label: "Raw Heartbeat",
+          data: [],
+          fill: false,
+          borderColor: "#137CBD",
+          backgroundColor: "rgba(19, 124, 189, 0.2)",
+          tension: 0.1, // Smooth curve
+        },
+      ],
+    }),
+    []
+  );
 
-  const rawChartData = useMemo(() => ({
-    datasets: [
-      {
-        label: "Processed Heartbeat",
-        data: [],
-        fill: false,
-        color: "brown",
-        borderColor: "#137CBD",
-        backgroundColor: "rgba(19, 124, 189, 0.2)",
-        tension: 0.1, // Smooth curve
-      },
-    ],
-  }), []);
+  const rawChartData = useMemo(
+    () => ({
+      datasets: [
+        {
+          label: "Processed Heartbeat",
+          data: [],
+          fill: false,
+          color: "brown",
+          borderColor: "#137CBD",
+          backgroundColor: "rgba(19, 124, 189, 0.2)",
+          tension: 0.1, // Smooth curve
+        },
+      ],
+    }),
+    []
+  );
 
-  const options = useMemo(() => ({
-    scales: {
-      y: {
-        beginAtZero: false,
+  const options = useMemo(
+    () => ({
+      scales: {
+        y: {
+          beginAtZero: false,
+        },
+        x: {
+          type: "realtime",
+          realtime: {
+            delay: 0,
+            refresh: 500 / SAMPLING_RATE,
+            ttl: undefined,
+            frameRate: SAMPLING_RATE,
+            duration: (1000 * SAMPLE_COUNT) / SAMPLING_RATE,
+          },
+        },
       },
-      x: {
-        type: 'realtime',
-        realtime: {
-          delay: 0,
-          refresh: 500 / SAMPLING_RATE,
-          ttl: undefined,
-          frameRate: SAMPLING_RATE,
-          duration: 1000 * SAMPLE_COUNT / SAMPLING_RATE,
-        }
-      }
-    },
-    responsive: true,
-    maintainAspectRatio: false,
-    plugins: {
-      tooltip: {
-        intersect: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: {
+          intersect: false,
+        },
       },
-    },
-    animations: false,
-  }), []);
+      animations: false,
+    }),
+    []
+  );
 
   return (
     <div>
@@ -150,8 +162,8 @@ const HeartbeatPlot: React.FC = () => {
         <Line ref={chartRef} data={chartData} options={options as any} />
       </div>
       <h2>
-          <Icon icon="graph" /> Raw Signal
-        </h2>
+        <Icon icon="graph" /> Raw Signal
+      </h2>
       <div style={{ height: "260px" }}>
         <Line ref={rawChartRef} data={rawChartData} options={options as any} />
       </div>

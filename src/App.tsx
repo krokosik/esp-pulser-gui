@@ -22,7 +22,13 @@ import { invoke } from "@tauri-apps/api/core";
 import { SensorCommand } from "./const";
 
 const App: React.FC = () => {
-  const { sensorIpAddress, setSensorIpAddress, connected, dummyData, toggleDummyData } = useAppStore();
+  const {
+    sensorIpAddress,
+    setSensorIpAddress,
+    connected,
+    dummyData,
+    toggleDummyData,
+  } = useAppStore();
 
   useEffect(() => {
     const detachPromise = attachConsole();
@@ -35,7 +41,10 @@ const App: React.FC = () => {
   return (
     <div className="app-container" style={{ height: "100vh", padding: "1rem" }}>
       <Navbar>
-        <Navbar.Group align={Alignment.LEFT} style={{ width: "100%", justifyContent: "space-between" }}>
+        <Navbar.Group
+          align={Alignment.LEFT}
+          style={{ width: "100%", justifyContent: "space-between" }}
+        >
           <Navbar.Heading>ESP32 Dashboard</Navbar.Heading>
           <Navbar.Divider />
           <FormGroup label="IP Address" inline style={{ margin: 0 }}>
@@ -59,7 +68,13 @@ const App: React.FC = () => {
               })
             }
           />
-          <Switch checked={dummyData} onChange={toggleDummyData} style={{ margin: 0 }}>Dummy Data</Switch>
+          <Switch
+            checked={dummyData}
+            onChange={toggleDummyData}
+            style={{ margin: 0 }}
+          >
+            Dummy Data
+          </Switch>
         </Navbar.Group>
       </Navbar>
 

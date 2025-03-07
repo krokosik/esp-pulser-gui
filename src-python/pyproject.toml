@@ -8,6 +8,7 @@ dependencies = [
     "hvplot>=0.10.0",
     "ipykernel>=6.29.5",
     "jupyter-bokeh>=4.0.5",
+    "matplotlib>=3.10.1",
     "numpy<2",
     "pyparsing>=3.2.1",
     "scipy>=1.10.1",

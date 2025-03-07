@@ -343,7 +343,11 @@ fn touch_designer_thread(app_handle: &tauri::AppHandle) -> Result<()> {
 
 fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let state = app_handle.state::<Mutex<AppState>>();
-    let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), 0))?;
+    let port = match std::env::var("PORT") {
+        Ok(port) => port.parse::<u16>().unwrap_or(0),
+        Err(_) => 0,
+    };
+    let socket = UdpSocket::bind(SocketAddrV4::new(Ipv4Addr::new(0, 0, 0, 0), port))?;
     socket.set_nonblocking(true)?;
     info!("listening on {:?}", socket.local_addr()?);
 
@@ -413,7 +417,7 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
             app_handle.emit("connection", false)?;
             break;
         }
-        std::thread::sleep(std::time::Duration::from_millis(1));
+        std::thread::sleep(std::time::Duration::from_millis(10));
     }
     {
         let state = app_handle.state::<Mutex<AppState>>();

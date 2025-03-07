@@ -417,7 +417,7 @@ fn sensor_thread(app_handle: &tauri::AppHandle) -> Result<()> {
             app_handle.emit("connection", false)?;
             break;
         }
-        std::thread::sleep(std::time::Duration::from_millis(10));
+        std::thread::sleep(std::time::Duration::from_millis(1));
     }
     {
         let state = app_handle.state::<Mutex<AppState>>();

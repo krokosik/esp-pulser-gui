@@ -113,7 +113,7 @@ const HeartbeatPlot: React.FC = () => {
           type: "realtime",
           realtime: {
             delay: 0,
-            refresh: 500 / SAMPLING_RATE,
+            refresh: 1000 / SAMPLING_RATE,
             ttl: undefined,
             frameRate: SAMPLING_RATE,
             duration: (1000 * SAMPLE_COUNT) / SAMPLING_RATE,

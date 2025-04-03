@@ -30,6 +30,7 @@ struct SensorStatus {
     haptic_ok: bool,
     heart_ok: bool,
     led_amplitude: u8,
+    haptic_amplitude: u8,
 }
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
@@ -75,7 +76,8 @@ pub fn run() {
             sensor_command,
             change_td_port,
             set_dummy_data,
-            change_led_amplitude
+            change_led_amplitude,
+            change_haptic_amplitude,
         ])
         .setup(|app| {
             #[cfg(desktop)]
@@ -463,6 +465,17 @@ fn change_led_amplitude(amplitude: u8, app_handle: tauri::AppHandle) -> Result<(
     let state = app_handle.state::<Mutex<AppState>>();
     let mut state = state.lock().unwrap();
     let buffer = [2, amplitude];
+    if let Some(sensor_tcp) = &mut state.sensor_tcp {
+        sensor_tcp.write(&buffer)?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn change_haptic_amplitude(amplitude: u8, app_handle: tauri::AppHandle) -> Result<()> {
+    let state = app_handle.state::<Mutex<AppState>>();
+    let mut state = state.lock().unwrap();
+    let buffer = [4, amplitude];
     if let Some(sensor_tcp) = &mut state.sensor_tcp {
         sensor_tcp.write(&buffer)?;
     }

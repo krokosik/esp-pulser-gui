@@ -16,6 +16,7 @@ export interface SensorStatus {
   haptic_ok: boolean;
   heart_ok: boolean;
   led_amplitude: number;
+  haptic_amplitude: number;
 }
 
 interface AppState {
@@ -34,6 +35,8 @@ interface AppState {
   setSensorIpAddress: (sensorIpAddress: string) => void;
   setTdUdpPort: (tdUdpPort: number) => void;
   setSensorStatus: (sensorStatus: SensorStatus | null) => void;
+  setLedAmplitude: (amplitude: number) => void;
+  setHapticAmplitude: (amplitude: number) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -74,5 +77,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   setLedAmplitude: async (amplitude: number) => {
     await invoke("change_led_amplitude", { amplitude });
+  },
+  setHapticAmplitude: async (amplitude: number) => {
+    await invoke("change_haptic_amplitude", { amplitude });
   },
 }));

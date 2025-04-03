@@ -5,14 +5,19 @@ import { invoke } from "@tauri-apps/api/core";
 
 const NetworkingStatus: React.FC = () => {
   const { tdUdpPort, setTdUdpPort, sensorStatus, connected } = useAppStore();
-  const [localAmp, setLocalAmp] = React.useState(0);
+  const [localLedAmp, setLocalLedAmp] = React.useState(0);
+  const [localHapticAmp, setLocalHapticAmp] = React.useState(0);
   const handleUdpChange = (value: string) => {
     setTdUdpPort(parseInt(value));
   };
 
   React.useEffect(() => {
-    setLocalAmp(sensorStatus?.led_amplitude || 0);
+    setLocalLedAmp(sensorStatus?.led_amplitude || 0);
   }, [sensorStatus?.led_amplitude]);
+
+  React.useEffect(() => {
+    setLocalHapticAmp(sensorStatus?.haptic_amplitude || 0);
+  }, [sensorStatus?.haptic_amplitude]);
 
   return (
     <div>
@@ -31,11 +36,27 @@ const NetworkingStatus: React.FC = () => {
       <FormGroup label="LED amplitude" inline>
         <NumericInput
           style={{ width: "80px" }}
-          value={localAmp}
-          disabled={!connected && localAmp !== sensorStatus?.led_amplitude}
+          value={localLedAmp}
+          disabled={!connected && localLedAmp !== sensorStatus?.led_amplitude}
           onValueChange={(_, val) => {
-            setLocalAmp(parseInt(val));
-            invoke("change_led_amplitude", { amplitude: parseInt(val) })
+            setLocalLedAmp(parseInt(val));
+            invoke("change_led_amplitude", { amplitude: parseInt(val) });
+          }}
+          min={0}
+          max={255}
+          stepSize={1}
+        />
+      </FormGroup>
+      <FormGroup label="Haptic amp" inline>
+        <NumericInput
+          style={{ width: "80px" }}
+          value={localHapticAmp}
+          disabled={
+            !connected && localHapticAmp !== sensorStatus?.haptic_amplitude
+          }
+          onValueChange={(_, val) => {
+            setLocalHapticAmp(parseInt(val));
+            invoke("change_haptic_amplitude", { amplitude: parseInt(val) });
           }}
           min={0}
           max={255}

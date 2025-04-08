@@ -1,4 +1,12 @@
-import { Button, Icon, ProgressBar } from "@blueprintjs/core";
+import {
+  Button,
+  FormGroup,
+  Icon,
+  InputGroup,
+  NumericInput,
+  Popover,
+  ProgressBar,
+} from "@blueprintjs/core";
 import { useAppStore } from "../store";
 import { useCallback, useMemo, useState } from "react";
 import { info, warn } from "@tauri-apps/plugin-log";
@@ -20,6 +28,8 @@ const UpdateStatus: React.FC = () => {
   const [guiUpdateProgress, setGuiUpdateProgress] = useState<number | null>(
     null
   );
+
+  const [updateUrl, setUpdateUrl] = useState("");
 
   const updateGui = useCallback(async () => {
     info("Updating GUI");
@@ -106,6 +116,45 @@ const UpdateStatus: React.FC = () => {
           }}
         />
       )}
+      {connected && <p>Firmware update fallback:</p>}
+      {connected && (
+        <Popover
+          interactionKind="click"
+          placement="bottom"
+          content={
+            <>
+              <FormGroup label="Provide an update URL">
+                <InputGroup
+                  value={updateUrl}
+                  onValueChange={(val) => setUpdateUrl(val)}
+                />
+              </FormGroup>
+              <Button
+                intent="primary"
+                type="submit"
+                text="OK"
+                onClick={async () => {
+                  info(
+                    "Issuing OTA firmware update command. The board will restart."
+                  );
+                  await invoke("sensor_command", {
+                    command: SensorCommand.Update,
+                    data: updateUrl,
+                  });
+                  setConnected(false);
+                }}
+              />
+            </>
+          }
+        >
+          <Button
+            intent="warning"
+            text="Custom update"
+            style={{ display: "block", margin: "auto" }}
+          />
+        </Popover>
+      )}
+      {connected && <p>Only works on firmware ≥0.6.5</p>}
     </div>
   );
 };

@@ -106,9 +106,10 @@ pub fn run() {
                     match connect_sensor(&app_handle, &mut error_count) {
                         Ok(_) => {}
                         Err(e) => {
-                            error_count += 1;
                             if error_count < 5 {
                                 log::error!("Error in sensor connection thread: {:?}", e);
+                            } else {
+                                error_count += 1;
                             }
                             std::thread::sleep(std::time::Duration::from_secs(1));
                         }
@@ -118,11 +119,17 @@ pub fn run() {
 
             let app_handle = app.app_handle().clone();
             tauri::async_runtime::spawn(async move {
+                let mut error_count = 0;
+
                 loop {
                     match touch_designer_thread(&app_handle) {
                         Ok(_) => {}
                         Err(e) => {
-                            log::error!("Error in TouchDesigner thread: {:?}", e);
+                            if error_count < 5 {
+                                log::error!("Error in TouchDesigner thread: {:?}", e);
+                            } else {
+                                error_count += 1;
+                            }
                             std::thread::sleep(std::time::Duration::from_secs(1));
                         }
                     }
@@ -150,7 +157,9 @@ pub fn run() {
 
 fn dummy_data_thread(app_handle: &tauri::AppHandle) -> Result<()> {
     let state = app_handle.state::<Mutex<AppState>>();
-    let hb_data_path = app_handle.path().resolve("heartbeat_data.dat", tauri::path::BaseDirectory::Resource)?;
+    let hb_data_path = app_handle
+        .path()
+        .resolve("heartbeat_data.dat", tauri::path::BaseDirectory::Resource)?;
 
     loop {
         let file = std::fs::File::open(hb_data_path.clone())?;

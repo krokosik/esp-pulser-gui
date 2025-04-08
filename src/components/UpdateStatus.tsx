@@ -12,6 +12,7 @@ const UpdateStatus: React.FC = () => {
     firmwareVersion,
     connected,
     guiUpdateAvailable,
+    setConnected,
     sensorStatus,
     setGuiUpdateAvailable,
   } = useAppStore();
@@ -93,12 +94,16 @@ const UpdateStatus: React.FC = () => {
           text="OTA Firmware Update"
           style={{ display: "block", margin: "auto" }}
           disabled={!connected || !canUpdateFirmware}
-          onClick={() =>
-            invoke("sensor_command", {
+          onClick={async () => {
+            info(
+              "Issuing OTA firmware update command. The board will restart."
+            );
+            await invoke("sensor_command", {
               command: SensorCommand.Update,
               data: firmwareVersion,
-            })
-          }
+            });
+            setConnected(false);
+          }}
         />
       )}
     </div>
